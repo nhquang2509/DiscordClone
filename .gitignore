@@ -2,9 +2,11 @@
 node_modules/
 .pnpm-store/
 
-# build output
-dist/
-dist-ssr/
+# next.js
+.next/
+out/
+
+# production build
 build/
 
 # test coverage
@@ -18,13 +20,19 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# environment files
+# environment files – never commit secrets
 .env
 .env.local
+.env.development
+.env.production
 .env.*.local
+
+# vercel
+.vercel
 
 # editor files
 .idea/
+.vscode/settings.json
 *.swp
 *.swo
 
@@ -34,16 +42,13 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+next-env.d.ts
 
 # cache
 .cache/
-.parcel-cache/
 .eslintcache
 .turbo/
 
-# vite
-vite.config.ts.timestamp-*
-*.local
-
 # package archives
 *.tgz
+*.pem
