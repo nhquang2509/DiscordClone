@@ -77,6 +77,12 @@ export function ChatArea({
   // Whether user is near the bottom (to decide if we auto-scroll on new messages)
   const isAtBottomRef = useRef(true);
 
+  // Scroll to bottom instantly whenever the channel changes
+  useEffect(() => {
+    isAtBottomRef.current = true;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+  }, [channel?.id]);
+
   // Restore scroll position after older messages are prepended
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
