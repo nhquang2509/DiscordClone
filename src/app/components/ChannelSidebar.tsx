@@ -113,6 +113,7 @@ export function ChannelSidebar({
   const inputBg = isDark ? 'bg-[#1e1f22] text-[#949ba4] placeholder:text-[#949ba4]' : 'bg-[#e3e5e8] text-[#4f5660] placeholder:text-[#747f8d]';
   const editInputBorder = isDark ? 'border-white text-white' : 'border-[#2e3338] text-[#2e3338]';
   const hoverText = isDark ? 'hover:text-white' : 'hover:text-[#2e3338]';
+  const channelHoverText = isDark ? 'hover:text-[#dbdee1]' : 'hover:text-[#1e1f22]';
 
   const renderSection = (
     sectionChannels: Channel[],
@@ -146,7 +147,7 @@ export function ChannelSidebar({
             className={`px-2 py-1.5 mx-2 rounded flex items-center gap-1.5 cursor-pointer group/ch ${
               isActive
                 ? `${activeBg} ${textPrimary}`
-                : `${textMuted} ${hoverBg} hover:text-[#dbdee1]`
+                : `${textMuted} ${hoverBg} ${channelHoverText}`
             }`}
           >
             <Icon className="w-5 h-5 flex-shrink-0" />
@@ -348,19 +349,21 @@ function DropdownItem({
 }
 
 function MemberItem({ name, status }: { name: string; status: 'online' | 'offline' }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   return (
-    <div className="px-2 py-1.5 mx-2 rounded flex items-center gap-2 cursor-pointer hover:bg-[#35363c] group">
+    <div className={`px-2 py-1.5 mx-2 rounded flex items-center gap-2 cursor-pointer group ${isDark ? 'hover:bg-[#35363c]' : 'hover:bg-[#e0e1e5]'}`}>
       <div className="relative">
         <div className="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center">
           <UserCircle2 className="w-6 h-6 text-white" />
         </div>
         <div
-          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#2b2d31] ${
+          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 ${isDark ? 'border-[#2b2d31]' : 'border-[#f2f3f5]'} ${
             status === 'online' ? 'bg-[#23a559]' : 'bg-[#80848e]'
           }`}
         />
       </div>
-      <span className="text-[#949ba4] text-sm font-medium group-hover:text-[#dbdee1]">{name}</span>
+      <span className={`text-sm font-medium ${isDark ? 'text-[#949ba4] group-hover:text-[#dbdee1]' : 'text-[#5c5f66] group-hover:text-[#1e1f22]'}`}>{name}</span>
     </div>
   );
 }

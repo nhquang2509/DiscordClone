@@ -1250,6 +1250,9 @@ body {
   .border-\[\#e3e5e8\] {
     border-color: #e3e5e8;
   }
+  .border-\[\#f2f3f5\] {
+    border-color: #f2f3f5;
+  }
   .border-border\/50 {
     border-color: var(--border);
     @supports (color: color-mix(in lab, red, red)) {
@@ -2032,6 +2035,13 @@ body {
     &:is(:where(.group):hover *) {
       @media (hover: hover) {
         height: calc(var(--spacing) * 5);
+      }
+    }
+  }
+  .group-hover\:text-\[\#1e1f22\] {
+    &:is(:where(.group):hover *) {
+      @media (hover: hover) {
+        color: #1e1f22;
       }
     }
   }
