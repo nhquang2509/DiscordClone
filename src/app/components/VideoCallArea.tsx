@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { Channel, Message, FileAttachment } from '@/types';
+import { useTheme } from '@/lib/theme-context';
 import { useVoiceCall } from '../../hooks/useVoiceCall';
 import type { VoiceParticipant } from '../../hooks/useVoiceCall';
 
@@ -101,18 +102,26 @@ function LobbyView({
   channel: Channel;
   onJoin: () => void;
 }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-6" style={{ background: '#1a1b1e' }}>
+    <div
+      className="flex-1 flex flex-col items-center justify-center gap-6"
+      style={{ background: isDark ? '#1a1b1e' : '#f2f3f5' }}
+    >
       <div className="flex flex-col items-center gap-3">
-        <div className="w-20 h-20 rounded-full bg-[#27282c] flex items-center justify-center">
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center"
+          style={{ background: isDark ? '#27282c' : '#e3e5e8' }}
+        >
           {channel.type === 'video' ? (
-            <Video className="w-9 h-9 text-[#b5bac1]" />
+            <Video className={`w-9 h-9 ${isDark ? 'text-[#b5bac1]' : 'text-[#4e5058]'}`} />
           ) : (
-            <Mic className="w-9 h-9 text-[#b5bac1]" />
+            <Mic className={`w-9 h-9 ${isDark ? 'text-[#b5bac1]' : 'text-[#4e5058]'}`} />
           )}
         </div>
-        <h2 className="text-white text-2xl font-bold">{channel.name}</h2>
-        <p className="text-[#949ba4] text-sm">
+        <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-[#2e3338]'}`}>{channel.name}</h2>
+        <p className={`text-sm ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>
           {channel.type === 'video' ? 'Kenh video' : 'Kenh thoai'}
         </p>
       </div>
@@ -202,20 +211,34 @@ function ActiveCallView({
       ? 'grid-cols-2'
       : 'grid-cols-3';
 
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  const bg = isDark ? '#1a1b1e' : '#f2f3f5';
+  const border = isDark ? '#26272b' : '#e3e5e8';
+  const textPrimary = isDark ? 'text-white' : 'text-[#2e3338]';
+  const textMuted = isDark ? 'text-[#80848e]' : 'text-[#5c5f66]';
+  const chatBg = isDark ? '#313338' : '#ffffff';
+  const ctrlBg = isDark ? '#232428' : '#e8e9ed';
+  const ctrlBorderTop = isDark ? '#1e1f22' : '#d4d5d9';
+  const inputBg = isDark ? '#383a40' : '#e3e5e8';
+  const inputText = isDark ? 'text-white' : 'text-[#2e3338]';
+  const inputPlaceholder = isDark ? 'placeholder:text-[#6d6f78]' : 'placeholder:text-[#81848f]';
+
   return (
-    <div className="flex-1 flex flex-col" style={{ background: '#1a1b1e' }}>
+    <div className="flex-1 flex flex-col" style={{ background: bg }}>
       {/* Header */}
       <div
         className="h-12 px-4 flex items-center justify-between flex-shrink-0"
-        style={{ borderBottom: '1px solid #26272b' }}
+        style={{ borderBottom: `1px solid ${border}` }}
       >
         <div className="flex items-center gap-2">
           {channel.type === 'video' ? (
-            <Video className="w-4 h-4 text-[#80848e]" />
+            <Video className={`w-4 h-4 ${textMuted}`} />
           ) : (
-            <Mic className="w-4 h-4 text-[#80848e]" />
+            <Mic className={`w-4 h-4 ${textMuted}`} />
           )}
-          <span className="text-white font-semibold text-sm">{channel.name}</span>
+          <span className={`${textPrimary} font-semibold text-sm`}>{channel.name}</span>
           <span className="text-[#3ba55c] text-xs font-medium bg-[#3ba55c]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-[#3ba55c] animate-pulse" />
             {allParticipants.length} thanh vien
@@ -250,16 +273,16 @@ function ActiveCallView({
         {isChatOpen && (
           <div
             className="w-72 flex flex-col flex-shrink-0"
-            style={{ background: '#313338', borderLeft: '1px solid #26272b' }}
+            style={{ background: chatBg, borderLeft: `1px solid ${border}` }}
           >
             <div
               className="h-12 px-4 flex items-center justify-between flex-shrink-0"
-              style={{ borderBottom: '1px solid #26272b' }}
+              style={{ borderBottom: `1px solid ${border}` }}
             >
-              <span className="text-white font-semibold text-sm">#{channel.name}</span>
+              <span className={`${textPrimary} font-semibold text-sm`}>#{channel.name}</span>
               <button
                 onClick={() => setIsChatOpen(false)}
-                className="text-[#b5bac1] hover:text-white transition-colors"
+                className={`${textMuted} ${isDark ? 'hover:text-white' : 'hover:text-[#2e3338]'} transition-colors`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -267,7 +290,7 @@ function ActiveCallView({
 
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
               {visibleMessages.length === 0 && (
-                <p className="text-[#72767d] text-xs text-center mt-4">Chua co tin nhan.</p>
+                <p className={`${textMuted} text-xs text-center mt-4`}>Chua co tin nhan.</p>
               )}
               {visibleMessages.map(msg => (
                 <div key={msg.id} className="flex gap-2">
@@ -279,12 +302,12 @@ function ActiveCallView({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-white text-sm font-semibold">{msg.authorName}</span>
-                      <span className="text-[#949ba4] text-[10px]">
+                      <span className={`${textPrimary} text-sm font-semibold`}>{msg.authorName}</span>
+                      <span className={`${textMuted} text-[10px]`}>
                         {msg.timestamp.split(', ')[1]}
                       </span>
                     </div>
-                    <p className="text-[#dbdee1] text-sm leading-snug break-words">{msg.content}</p>
+                    <p className={`${isDark ? 'text-[#dbdee1]' : 'text-[#2e3338]'} text-sm leading-snug break-words`}>{msg.content}</p>
                   </div>
                 </div>
               ))}
@@ -292,14 +315,14 @@ function ActiveCallView({
             </div>
 
             <div className="px-3 pb-4 flex-shrink-0">
-              <div className="bg-[#383a40] rounded px-3 py-2">
+              <div className="rounded px-3 py-2" style={{ background: inputBg }}>
                 <input
                   type="text"
                   placeholder={`Nhan vao #${channel.name}`}
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSendChat(); }}
-                  className="w-full bg-transparent text-white placeholder:text-[#6d6f78] outline-none text-sm"
+                  className={`w-full bg-transparent ${inputText} ${inputPlaceholder} outline-none text-sm`}
                 />
               </div>
             </div>
@@ -310,10 +333,10 @@ function ActiveCallView({
       {/* Bottom controls */}
       <div
         className="h-[80px] px-6 flex items-center justify-between flex-shrink-0"
-        style={{ background: '#232428', borderTop: '1px solid #1e1f22' }}
+        style={{ background: ctrlBg, borderTop: `1px solid ${ctrlBorderTop}` }}
       >
         <div className="min-w-[140px]">
-          <p className="text-white text-sm font-medium">{channel.name}</p>
+          <p className={`${textPrimary} text-sm font-medium`}>{channel.name}</p>
           <p className="text-[#3ba55c] text-xs flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#3ba55c] inline-block" />
             Dang ket noi
@@ -381,6 +404,8 @@ function CtrlBtn({
   highlight?: boolean;
   onClick: () => void;
 }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   return (
     <div className="flex flex-col items-center gap-0.5">
       <button
@@ -392,13 +417,13 @@ function CtrlBtn({
             : danger
             ? 'bg-[#ed4245]/20 text-[#ed4245] hover:bg-[#ed4245]/30'
             : active
-            ? 'bg-[#404249] text-white hover:bg-[#4f5058]'
-            : 'bg-[#2b2d31] text-[#b5bac1] hover:bg-[#404249] hover:text-white'
+            ? `${isDark ? 'bg-[#404249]' : 'bg-[#d5d7db]'} ${isDark ? 'text-white' : 'text-[#2e3338]'} ${isDark ? 'hover:bg-[#4f5058]' : 'hover:bg-[#c8cace]'}`
+            : `${isDark ? 'bg-[#2b2d31] text-[#b5bac1] hover:bg-[#404249] hover:text-white' : 'bg-[#e3e5e8] text-[#4e5058] hover:bg-[#d5d7db] hover:text-[#2e3338]'}`
         }`}
       >
         <Icon className="w-5 h-5" />
       </button>
-      <span className="text-[#949ba4] text-[9px] whitespace-nowrap">{label}</span>
+      <span className={`${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'} text-[9px] whitespace-nowrap`}>{label}</span>
     </div>
   );
 }

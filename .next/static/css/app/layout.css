@@ -2377,6 +2377,11 @@ body {
       color: #949ba4;
     }
   }
+  .placeholder\:text-\[\#81848f\] {
+    &::placeholder {
+      color: #81848f;
+    }
+  }
   .placeholder\:text-\[\#87898c\] {
     &::placeholder {
       color: #87898c;
@@ -2549,6 +2554,13 @@ body {
       }
     }
   }
+  .hover\:bg-\[\#c8cace\] {
+    &:hover {
+      @media (hover: hover) {
+        background-color: #c8cace;
+      }
+    }
+  }
   .hover\:bg-\[\#c03537\] {
     &:hover {
       @media (hover: hover) {
@@ -2560,6 +2572,13 @@ body {
     &:hover {
       @media (hover: hover) {
         background-color: #d4d7dc;
+      }
+    }
+  }
+  .hover\:bg-\[\#d5d7db\] {
+    &:hover {
+      @media (hover: hover) {
+        background-color: #d5d7db;
       }
     }
   }
