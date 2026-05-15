@@ -77,7 +77,7 @@ function VideoTile({
           </div>
           <span className="text-[#b5bac1] text-sm font-medium">
             {participant.username}
-            {isLocal ? ' (Bạn)' : ''}
+            {isLocal ? ' (You)' : ''}
           </span>
         </div>
       )}
@@ -87,7 +87,7 @@ function VideoTile({
         {!participant.isMicOn && <MicOff className="w-3 h-3 text-[#ed4245]" />}
         <span className="text-white text-xs font-medium">
           {participant.username}
-          {isLocal ? ' (Ban)' : ''}
+          {isLocal ? ' (You)' : ''}
         </span>
       </div>
     </div>
@@ -122,7 +122,7 @@ function LobbyView({
         </div>
         <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-[#2e3338]'}`}>{channel.name}</h2>
         <p className={`text-sm ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>
-          {channel.type === 'video' ? 'Kenh video' : 'Kenh thoai'}
+          {channel.type === 'video' ? 'Video channel' : 'Voice channel'}
         </p>
       </div>
 
@@ -131,7 +131,7 @@ function LobbyView({
         className="bg-[#248046] hover:bg-[#1a6334] text-white px-8 py-3 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
       >
         <PhoneCall className="w-4 h-4" />
-        Tham gia cuoc goi
+        Join call
       </button>
     </div>
   );
@@ -241,7 +241,7 @@ function ActiveCallView({
           <span className={`${textPrimary} font-semibold text-sm`}>{channel.name}</span>
           <span className="text-[#3ba55c] text-xs font-medium bg-[#3ba55c]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-[#3ba55c] animate-pulse" />
-            {allParticipants.length} thanh vien
+            {allParticipants.length} {allParticipants.length === 1 ? 'member' : 'members'}
           </span>
         </div>
         <div className="flex items-center gap-2 text-[#949ba4] text-xs">
@@ -290,7 +290,7 @@ function ActiveCallView({
 
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
               {visibleMessages.length === 0 && (
-                <p className={`${textMuted} text-xs text-center mt-4`}>Chua co tin nhan.</p>
+                <p className={`${textMuted} text-xs text-center mt-4`}>No messages yet.</p>
               )}
               {visibleMessages.map(msg => (
                 <div key={msg.id} className="flex gap-2">
@@ -318,7 +318,7 @@ function ActiveCallView({
               <div className="rounded px-3 py-2" style={{ background: inputBg }}>
                 <input
                   type="text"
-                  placeholder={`Nhan vao #${channel.name}`}
+                  placeholder={`Message #${channel.name}`}
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSendChat(); }}
@@ -339,28 +339,28 @@ function ActiveCallView({
           <p className={`${textPrimary} text-sm font-medium`}>{channel.name}</p>
           <p className="text-[#3ba55c] text-xs flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#3ba55c] inline-block" />
-            Dang ket noi
+            Connected
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <CtrlBtn
             icon={isMicOn ? Mic : MicOff}
-            label={isMicOn ? 'Tat mic' : 'Bat mic'}
+            label={isMicOn ? 'Mute' : 'Unmute'}
             active={isMicOn}
             danger={!isMicOn}
             onClick={toggleMic}
           />
           <CtrlBtn
             icon={isCameraOn ? Video : VideoOff}
-            label={isCameraOn ? 'Tat camera' : 'Bat camera'}
+            label={isCameraOn ? 'Stop video' : 'Start video'}
             active={isCameraOn}
             danger={!isCameraOn}
             onClick={toggleCamera}
           />
           <CtrlBtn
             icon={isScreenSharing ? MonitorOff : Monitor}
-            label={isScreenSharing ? 'Dung chia se' : 'Chia se man hinh'}
+            label={isScreenSharing ? 'Stop sharing' : 'Share screen'}
             active={isScreenSharing}
             highlight={isScreenSharing}
             onClick={toggleScreenShare}
@@ -380,7 +380,7 @@ function ActiveCallView({
             className="bg-[#ed4245] hover:bg-[#c03537] text-white px-5 py-2 rounded-full flex items-center gap-2 text-sm font-semibold transition-colors"
           >
             <Phone className="w-4 h-4" />
-            Roi phong
+            Leave
           </button>
         </div>
       </div>
