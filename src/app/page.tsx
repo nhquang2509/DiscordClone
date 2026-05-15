@@ -1,0 +1,271 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Toaster } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { useServers } from '@/hooks/useServers';
+import { useChannels } from '@/hooks/useChannels';
+import { useMessages } from '@/hooks/useMessages';
+import { useServerMembers } from '@/hooks/useServerMembers';
+import { supabase } from '@/lib/supabase/client';
+import { ThemeContext } from '@/lib/theme-context';
+import { ServerSidebar } from '@/app/components/ServerSidebar';
+import { ChannelSidebar } from '@/app/components/ChannelSidebar';
+import { ChatArea } from '@/app/components/ChatArea';
+import { AuthPage } from '@/app/components/AuthPage';
+import { ManageMembersModal } from '@/app/components/ManageMembersModal';
+import type { Theme, FileAttachment } from '@/types';
+
+export default function HomePage() {
+  const { user, loading: authLoading, signOut } = useAuth();
+  const [theme, setTheme] = useState<Theme>('dark');
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+  const [selectedChannelIds, setSelectedChannelIds] = useState<Record<string, string | null>>({});
+  const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
+  const [manageMembersReadOnly, setManageMembersReadOnly] = useState(false);
+
+  const displayName = user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'User';
+  const authorColor = '#5865f2';
+
+  const {
+    servers,
+    loading: serversLoading,
+    createServer,
+    deleteServer,
+    generateInviteCode,
+    joinServerByInvite,
+    quitServer,
+  } = useServers(user);
+
+  const currentChannelId = selectedServerId ? (selectedChannelIds[selectedServerId] ?? null) : null;
+  const { channels, createChannel, deleteChannel, renameChannel } = useChannels(selectedServerId);
+  const {
+    messages,
+    sendMessage,
+    deleteMessage: deleteMsg,
+    editMessage,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+  } = useMessages(currentChannelId);
+  const { members, myRole, setMemberRole, kickMember } = useServerMembers(
+    selectedServerId,
+    user?.id ?? null,
+  );
+
+  const resolvedTheme: 'dark' | 'light' =
+    theme === 'system'
+      ? typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+      : theme;
+
+  const isDark = resolvedTheme === 'dark';
+
+  // Lưu invite code khi chưa đăng nhập
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('invite');
+    if (code) {
+      sessionStorage.setItem('pendingInvite', code);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  // Xử lý invite khi user đăng nhập
+  useEffect(() => {
+    if (!user) return;
+    const code =
+      sessionStorage.getItem('pendingInvite') ||
+      new URLSearchParams(window.location.search).get('invite');
+    if (!code) return;
+    sessionStorage.removeItem('pendingInvite');
+    window.history.replaceState({}, '', window.location.pathname);
+    joinServerByInvite(code).then((server) => {
+      if (server) setSelectedServerId(server.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const handleQuitServer = async (serverId: string) => {
+    const remaining = servers.filter((s) => s.id !== serverId);
+    await quitServer(serverId, user!.id);
+    if (selectedServerId === serverId) {
+      setSelectedServerId(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
+    }
+  };
+
+  const handleCreateServer = async (name: string, image: string | null) => {
+    const server = await createServer(name, image);
+    if (server) {
+      const { data: generalChannel } = await supabase
+        .from('channels')
+        .insert({ server_id: server.id, name: 'general', type: 'text' })
+        .select('id, name, type')
+        .single();
+      await supabase
+        .from('server_members')
+        .insert({ server_id: server.id, user_id: user!.id, username: displayName, role: 'admin' });
+      setSelectedServerId(server.id);
+      setSelectedChannelIds((prev) => ({
+        ...prev,
+        [server.id]: generalChannel ? generalChannel.id : null,
+      }));
+    }
+  };
+
+  const handleDeleteServer = async (serverId: string) => {
+    const remaining = servers.filter((s) => s.id !== serverId);
+    await deleteServer(serverId);
+    if (selectedServerId === serverId) {
+      setSelectedServerId(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
+    }
+  };
+
+  const handleCreateChannel = async (
+    serverId: string,
+    name: string,
+    type: 'text' | 'audio' | 'video',
+  ) => {
+    const channel = await createChannel(name, type);
+    if (channel) {
+      setSelectedChannelIds((prev) => ({ ...prev, [serverId]: channel.id }));
+    }
+  };
+
+  const handleDeleteChannel = async (serverId: string, channelId: string) => {
+    const remaining = channels.filter((c) => c.id !== channelId);
+    await deleteChannel(channelId);
+    if (selectedChannelIds[serverId] === channelId) {
+      setSelectedChannelIds((prev) => ({
+        ...prev,
+        [serverId]: remaining.length > 0 ? remaining[0].id : null,
+      }));
+    }
+  };
+
+  const handleRenameChannel = async (_serverId: string, channelId: string, newName: string) => {
+    await renameChannel(channelId, newName);
+  };
+
+  const handleSendMessage = async (
+    _channelId: string,
+    content: string,
+    files: FileAttachment[],
+  ) => {
+    await sendMessage(user!.id, displayName, authorColor, content, files);
+  };
+
+  const handleDeleteMessage = async (_channelId: string, messageId: string) => {
+    await deleteMsg(messageId);
+  };
+
+  const handleEditMessage = async (_channelId: string, messageId: string, content: string) => {
+    await editMessage(messageId, content);
+  };
+
+  if (authLoading || serversLoading) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-[#313338]">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#5865f2]" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="h-full w-full">
+        <AuthPage />
+        <Toaster richColors position="top-center" />
+      </div>
+    );
+  }
+
+  const currentServer = servers.find((s) => s.id === selectedServerId) ?? null;
+  const currentChannel = channels.find((c) => c.id === currentChannelId) ?? null;
+
+  return (
+    <ThemeContext.Provider value={{ resolvedTheme, theme, setTheme }}>
+      <Toaster richColors position="top-center" />
+      <div className={`h-full w-full flex ${isDark ? 'bg-[#313338]' : 'bg-[#f2f3f5]'}`}>
+        <ServerSidebar
+          servers={servers}
+          selectedServerId={selectedServerId}
+          onSelectServer={setSelectedServerId}
+          onCreateServer={handleCreateServer}
+          user={user}
+          onSignOut={signOut}
+        />
+        {currentServer ? (
+          <>
+            <ChannelSidebar
+              serverName={currentServer.name}
+              channels={channels}
+              selectedChannelId={currentChannelId}
+              onSelectChannel={(id) =>
+                setSelectedChannelIds((prev) => ({ ...prev, [currentServer.id]: id }))
+              }
+              onCreateChannel={(name, type) => handleCreateChannel(currentServer.id, name, type)}
+              onDeleteChannel={(id) => handleDeleteChannel(currentServer.id, id)}
+              onRenameChannel={(id, name) => handleRenameChannel(currentServer.id, id, name)}
+              onDeleteServer={() => handleDeleteServer(currentServer.id)}
+              myRole={myRole}
+              onQuitServer={() => handleQuitServer(currentServer.id)}
+              inviteCode={currentServer.invite_code}
+              onGenerateInviteCode={() => generateInviteCode(currentServer.id)}
+              onManageMembers={() => {
+                setIsManageMembersOpen(true);
+                setManageMembersReadOnly(false);
+              }}
+              onMemberList={() => {
+                setIsManageMembersOpen(true);
+                setManageMembersReadOnly(true);
+              }}
+            />
+            <ManageMembersModal
+              isOpen={isManageMembersOpen}
+              onClose={() => setIsManageMembersOpen(false)}
+              members={members}
+              myRole={myRole}
+              currentUserId={user.id}
+              onSetRole={setMemberRole}
+              onKick={kickMember}
+              readOnly={manageMembersReadOnly}
+            />
+            <ChatArea
+              channel={currentChannel}
+              messages={messages}
+              currentUserId={user!.id}
+              currentUsername={displayName}
+              members={members}
+              myRole={myRole}
+              onSetMemberRole={setMemberRole}
+              loadMore={loadMore}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              onSendMessage={(content, files) =>
+                currentChannelId && handleSendMessage(currentChannelId, content, files)
+              }
+              onDeleteMessage={(id) =>
+                currentChannelId && handleDeleteMessage(currentChannelId, id)
+              }
+              onEditMessage={(id, content) =>
+                currentChannelId && handleEditMessage(currentChannelId, id, content)
+              }
+            />
+          </>
+        ) : (
+          <div
+            className={`flex-1 flex items-center justify-center ${
+              isDark ? 'text-[#949ba4]' : 'text-[#4f5660]'
+            }`}
+          >
+            <div className="text-center">
+              <div className="text-5xl mb-4">👋</div>
+              <p className="text-xl">Create or select a server to get started</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </ThemeContext.Provider>
+  );
+}

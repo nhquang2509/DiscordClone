@@ -1,0 +1,453 @@
+﻿'use client';
+
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  Monitor,
+  MonitorOff,
+  MessageSquare,
+  Phone,
+  PhoneCall,
+  X,
+  Users,
+  AlertCircle,
+} from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import type { Channel, Message, FileAttachment } from '@/types';
+import { useVoiceCall } from '../../hooks/useVoiceCall';
+import type { VoiceParticipant } from '../../hooks/useVoiceCall';
+
+interface VideoCallAreaProps {
+  channel: Channel;
+  messages: Message[];
+  currentUserId: string;
+  currentUsername: string;
+  onSendMessage: (content: string, files: FileAttachment[]) => void;
+  onDeleteMessage: (id: string) => void;
+  onEditMessage: (id: string, content: string) => void;
+}
+
+// ─── VideoTile ──────────────────────────────────────────────────────────────
+function VideoTile({
+  participant,
+  isLocal = false,
+}: {
+  participant: VoiceParticipant & { stream: MediaStream | null };
+  isLocal?: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = participant.stream ?? null;
+    }
+  }, [participant.stream]);
+
+  const hasActiveVideo =
+    participant.stream != null &&
+    participant.stream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
+
+  return (
+    <div className="relative rounded-xl overflow-hidden bg-[#1e1f22] flex items-center justify-center aspect-video border border-[#26272b]">
+      {/*
+        The <video> element MUST always be in the DOM so that the browser can
+        route the remote participant's audio through it. Hiding it with CSS
+        (display:none / hidden) does NOT stop audio playback — only conditional
+        rendering (unmounting) does, which is why audio was broken before.
+      */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={isLocal}
+        className={hasActiveVideo ? 'w-full h-full object-cover' : 'hidden'}
+      />
+
+      {/* Avatar shown when there is no active video */}
+      {!hasActiveVideo && (
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold"
+            style={{ background: '#5865f2' }}
+          >
+            {participant.username.charAt(0).toUpperCase()}
+          </div>
+          <span className="text-[#b5bac1] text-sm font-medium">
+            {participant.username}
+            {isLocal ? ' (Bạn)' : ''}
+          </span>
+        </div>
+      )}
+
+      {/* Name + mic status badge */}
+      <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-black/60 rounded-md px-2 py-1">
+        {!participant.isMicOn && <MicOff className="w-3 h-3 text-[#ed4245]" />}
+        <span className="text-white text-xs font-medium">
+          {participant.username}
+          {isLocal ? ' (Ban)' : ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Lobby view (before joining) ────────────────────────────────────────────
+function LobbyView({
+  channel,
+  onJoin,
+}: {
+  channel: Channel;
+  onJoin: () => void;
+}) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-6" style={{ background: '#1a1b1e' }}>
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-20 h-20 rounded-full bg-[#27282c] flex items-center justify-center">
+          {channel.type === 'video' ? (
+            <Video className="w-9 h-9 text-[#b5bac1]" />
+          ) : (
+            <Mic className="w-9 h-9 text-[#b5bac1]" />
+          )}
+        </div>
+        <h2 className="text-white text-2xl font-bold">{channel.name}</h2>
+        <p className="text-[#949ba4] text-sm">
+          {channel.type === 'video' ? 'Kenh video' : 'Kenh thoai'}
+        </p>
+      </div>
+
+      <button
+        onClick={onJoin}
+        className="bg-[#248046] hover:bg-[#1a6334] text-white px-8 py-3 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
+      >
+        <PhoneCall className="w-4 h-4" />
+        Tham gia cuoc goi
+      </button>
+    </div>
+  );
+}
+
+// ─── Active call view ────────────────────────────────────────────────────────
+function ActiveCallView({
+  channel,
+  messages,
+  currentUserId,
+  currentUsername,
+  onSendMessage,
+  onLeave,
+}: {
+  channel: Channel;
+  messages: Message[];
+  currentUserId: string;
+  currentUsername: string;
+  onSendMessage: (content: string, files: FileAttachment[]) => void;
+  onLeave: () => void;
+}) {
+  const {
+    participants,
+    localStream,
+    isMicOn,
+    isCameraOn,
+    isScreenSharing,
+    error,
+    toggleMic,
+    toggleCamera,
+    toggleScreenShare,
+    leaveCall,
+  } = useVoiceCall(channel.id, currentUserId, currentUsername, channel.type);
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [elapsed, setElapsed] = useState(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (isChatOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isChatOpen]);
+
+  const fmt = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+
+  const handleSendChat = () => {
+    if (!chatInput.trim()) return;
+    onSendMessage(chatInput.trim(), []);
+    setChatInput('');
+  };
+
+  const visibleMessages = messages.filter(m => !m.deleted);
+
+  const localParticipant: VoiceParticipant = {
+    userId: currentUserId,
+    username: currentUsername,
+    stream: localStream,
+    isMicOn,
+    isCameraOn,
+  };
+  const allParticipants = [localParticipant, ...participants];
+
+  const colClass =
+    allParticipants.length === 1
+      ? 'grid-cols-1 max-w-xl mx-auto'
+      : allParticipants.length <= 4
+      ? 'grid-cols-2'
+      : 'grid-cols-3';
+
+  return (
+    <div className="flex-1 flex flex-col" style={{ background: '#1a1b1e' }}>
+      {/* Header */}
+      <div
+        className="h-12 px-4 flex items-center justify-between flex-shrink-0"
+        style={{ borderBottom: '1px solid #26272b' }}
+      >
+        <div className="flex items-center gap-2">
+          {channel.type === 'video' ? (
+            <Video className="w-4 h-4 text-[#80848e]" />
+          ) : (
+            <Mic className="w-4 h-4 text-[#80848e]" />
+          )}
+          <span className="text-white font-semibold text-sm">{channel.name}</span>
+          <span className="text-[#3ba55c] text-xs font-medium bg-[#3ba55c]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#3ba55c] animate-pulse" />
+            {allParticipants.length} thanh vien
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-[#949ba4] text-xs">
+          <Users className="w-4 h-4" />
+          <span>{fmt(elapsed)}</span>
+        </div>
+      </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-center gap-2 bg-[#ed4245]/20 text-[#ed4245] text-sm px-4 py-2 flex-shrink-0">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Participant grid */}
+        <div className="flex-1 p-4 overflow-y-auto flex items-start justify-center">
+          <div className={`grid ${colClass} gap-3 w-full`}>
+            {allParticipants.map((p, i) => (
+              <VideoTile key={p.userId} participant={p} isLocal={i === 0} />
+            ))}
+          </div>
+        </div>
+
+        {/* Chat panel */}
+        {isChatOpen && (
+          <div
+            className="w-72 flex flex-col flex-shrink-0"
+            style={{ background: '#313338', borderLeft: '1px solid #26272b' }}
+          >
+            <div
+              className="h-12 px-4 flex items-center justify-between flex-shrink-0"
+              style={{ borderBottom: '1px solid #26272b' }}
+            >
+              <span className="text-white font-semibold text-sm">#{channel.name}</span>
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="text-[#b5bac1] hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+              {visibleMessages.length === 0 && (
+                <p className="text-[#72767d] text-xs text-center mt-4">Chua co tin nhan.</p>
+              )}
+              {visibleMessages.map(msg => (
+                <div key={msg.id} className="flex gap-2">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 mt-0.5"
+                    style={{ backgroundColor: msg.authorColor }}
+                  >
+                    {msg.authorAvatar}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-white text-sm font-semibold">{msg.authorName}</span>
+                      <span className="text-[#949ba4] text-[10px]">
+                        {msg.timestamp.split(', ')[1]}
+                      </span>
+                    </div>
+                    <p className="text-[#dbdee1] text-sm leading-snug break-words">{msg.content}</p>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="px-3 pb-4 flex-shrink-0">
+              <div className="bg-[#383a40] rounded px-3 py-2">
+                <input
+                  type="text"
+                  placeholder={`Nhan vao #${channel.name}`}
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSendChat(); }}
+                  className="w-full bg-transparent text-white placeholder:text-[#6d6f78] outline-none text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom controls */}
+      <div
+        className="h-[80px] px-6 flex items-center justify-between flex-shrink-0"
+        style={{ background: '#232428', borderTop: '1px solid #1e1f22' }}
+      >
+        <div className="min-w-[140px]">
+          <p className="text-white text-sm font-medium">{channel.name}</p>
+          <p className="text-[#3ba55c] text-xs flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#3ba55c] inline-block" />
+            Dang ket noi
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <CtrlBtn
+            icon={isMicOn ? Mic : MicOff}
+            label={isMicOn ? 'Tat mic' : 'Bat mic'}
+            active={isMicOn}
+            danger={!isMicOn}
+            onClick={toggleMic}
+          />
+          <CtrlBtn
+            icon={isCameraOn ? Video : VideoOff}
+            label={isCameraOn ? 'Tat camera' : 'Bat camera'}
+            active={isCameraOn}
+            danger={!isCameraOn}
+            onClick={toggleCamera}
+          />
+          <CtrlBtn
+            icon={isScreenSharing ? MonitorOff : Monitor}
+            label={isScreenSharing ? 'Dung chia se' : 'Chia se man hinh'}
+            active={isScreenSharing}
+            highlight={isScreenSharing}
+            onClick={toggleScreenShare}
+          />
+          <CtrlBtn
+            icon={MessageSquare}
+            label="Chat"
+            active={isChatOpen}
+            highlight={isChatOpen}
+            onClick={() => setIsChatOpen(v => !v)}
+          />
+        </div>
+
+        <div className="flex items-center justify-end min-w-[140px]">
+          <button
+            onClick={async () => { await leaveCall(); onLeave(); }}
+            className="bg-[#ed4245] hover:bg-[#c03537] text-white px-5 py-2 rounded-full flex items-center gap-2 text-sm font-semibold transition-colors"
+          >
+            <Phone className="w-4 h-4" />
+            Roi phong
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Control button ──────────────────────────────────────────────────────────
+function CtrlBtn({
+  icon: Icon,
+  label,
+  active,
+  danger,
+  highlight,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  danger?: boolean;
+  highlight?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <button
+        onClick={onClick}
+        title={label}
+        className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${
+          highlight
+            ? 'bg-[#5865f2] text-white hover:bg-[#4752c4]'
+            : danger
+            ? 'bg-[#ed4245]/20 text-[#ed4245] hover:bg-[#ed4245]/30'
+            : active
+            ? 'bg-[#404249] text-white hover:bg-[#4f5058]'
+            : 'bg-[#2b2d31] text-[#b5bac1] hover:bg-[#404249] hover:text-white'
+        }`}
+      >
+        <Icon className="w-5 h-5" />
+      </button>
+      <span className="text-[#949ba4] text-[9px] whitespace-nowrap">{label}</span>
+    </div>
+  );
+}
+
+// ─── Main export ─────────────────────────────────────────────────────────────
+export function VideoCallArea({
+  channel,
+  messages,
+  currentUserId,
+  currentUsername,
+  onSendMessage,
+}: VideoCallAreaProps) {
+  const [isJoined, setIsJoined] = useState(false);
+  // Messages visible in the call chat — reset on each new call session
+  const [callMessages, setCallMessages] = useState<Message[]>([]);
+  // IDs of messages that existed before joining (so we only show new ones)
+  const seenIdsRef = useRef<Set<string>>(new Set());
+
+  // Accumulate messages that arrive AFTER joining the call
+  useEffect(() => {
+    if (!isJoined) return;
+    setCallMessages(prev => {
+      const newMsgs = messages.filter(m => !seenIdsRef.current.has(m.id));
+      newMsgs.forEach(m => seenIdsRef.current.add(m.id));
+      // Also apply edits / soft-deletes to existing call messages
+      const updated = prev.map(cm => messages.find(m => m.id === cm.id) ?? cm);
+      return [...updated, ...newMsgs];
+    });
+  }, [messages, isJoined]);
+
+  const handleJoin = () => {
+    // Snapshot current message IDs so they are treated as "pre-existing"
+    seenIdsRef.current = new Set(messages.map(m => m.id));
+    setCallMessages([]);
+    setIsJoined(true);
+  };
+
+  if (!isJoined) {
+    return <LobbyView channel={channel} onJoin={handleJoin} />;
+  }
+
+  return (
+    <ActiveCallView
+      channel={channel}
+      messages={callMessages}
+      currentUserId={currentUserId}
+      currentUsername={currentUsername}
+      onSendMessage={onSendMessage}
+      onLeave={() => setIsJoined(false)}
+    />
+  );
+}
