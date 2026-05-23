@@ -29,6 +29,7 @@ interface VideoCallAreaProps {
   onSendMessage: (content: string, files: FileAttachment[]) => void;
   onDeleteMessage: (id: string) => void;
   onEditMessage: (id: string, content: string) => void;
+  onClose?: () => void;
 }
 
 // ─── VideoTile ──────────────────────────────────────────────────────────────
@@ -460,6 +461,7 @@ export function VideoCallArea({
   currentUserId,
   currentUsername,
   onSendMessage,
+  onClose,
 }: VideoCallAreaProps) {
   const [isJoined, setIsJoined] = useState(false);
   // Messages visible in the call chat — reset on each new call session
@@ -497,7 +499,7 @@ export function VideoCallArea({
       currentUserId={currentUserId}
       currentUsername={currentUsername}
       onSendMessage={onSendMessage}
-      onLeave={() => setIsJoined(false)}
+      onLeave={() => { setIsJoined(false); onClose?.(); }}
     />
   );
 }

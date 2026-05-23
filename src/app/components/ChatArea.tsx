@@ -20,6 +20,9 @@ import {
   ShieldCheck,
   ChevronDown,
   Download,
+  Phone,
+  Video,
+  User,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -72,6 +75,7 @@ export function ChatArea({
   const [editingContent, setEditingContent] = useState('');
   const [isMembersOpen, setIsMembersOpen] = useState(false);
   const [openRoleMenuId, setOpenRoleMenuId] = useState<string | null>(null);
+  const [dmCallMode, setDmCallMode] = useState<'none' | 'audio' | 'video'>('none');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Saved scrollHeight before loadMore — used to restore scroll position after prepend
@@ -83,6 +87,11 @@ export function ChatArea({
   useEffect(() => {
     isAtBottomRef.current = true;
     messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+  }, [channel?.id]);
+
+  // Reset DM call when switching channels
+  useEffect(() => {
+    setDmCallMode('none');
   }, [channel?.id]);
 
   // Restore scroll position after older messages are prepended
@@ -154,6 +163,28 @@ export function ChatArea({
     );
   }
 
+  // ——— DM voice/video call overlay ———
+  if (channel.type === 'members' && dmCallMode !== 'none') {
+    const dmCallChannel: Channel = {
+      ...channel,
+      type: dmCallMode,
+      name: partnerName ?? channel.name,
+    };
+    return (
+      <VideoCallArea
+        key={`dm-call-${channel.id}-${dmCallMode}`}
+        channel={dmCallChannel}
+        messages={messages}
+        currentUserId={currentUserId}
+        currentUsername={currentUsername}
+        onSendMessage={onSendMessage}
+        onDeleteMessage={onDeleteMessage}
+        onEditMessage={onEditMessage}
+        onClose={() => setDmCallMode('none')}
+      />
+    );
+  }
+
   // ——— Text channel ———
 
   const handleSend = () => {
@@ -196,27 +227,55 @@ export function ChatArea({
         className={`h-12 px-4 flex items-center justify-between border-b ${borderColor} shadow-sm flex-shrink-0`}
       >
         <div className="flex items-center gap-2">
-          <Hash className="w-5 h-5" style={{ color: isDark ? '#80848e' : '#747f8d' }} />
-          <span className={`${textPrimary} font-semibold`}>{channel.name}</span>
+          {channel.type === 'members' ? (
+            <>
+              <div className="w-6 h-6 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                {(partnerName ?? channel.name).charAt(0).toUpperCase()}
+              </div>
+              <span className={`${textPrimary} font-semibold`}>{partnerName ?? channel.name}</span>
+            </>
+          ) : (
+            <>
+              <Hash className="w-5 h-5" style={{ color: isDark ? '#80848e' : '#747f8d' }} />
+              <span className={`${textPrimary} font-semibold`}>{channel.name}</span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 bg-[#248046] text-white text-xs font-medium rounded flex items-center gap-1">
             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
             Live: Real-time updates
           </div>
-          <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
-          <Pin className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
-          <Users
-            onClick={() => setIsMembersOpen(o => !o)}
-            className={`w-5 h-5 cursor-pointer transition-colors ${
-              isMembersOpen
-                ? 'text-white'
-                : `${textMuted} ${hoverIconMuted}`
-            }`}
-          />
-          <Search className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
-          <Inbox className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
-          <CircleHelp className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+          {channel.type === 'members' ? (
+            <>
+              <Phone
+                onClick={() => setDmCallMode('audio')}
+                className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`}
+              />
+              <Video
+                onClick={() => setDmCallMode('video')}
+                className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`}
+              />
+              <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              <Pin className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+            </>
+          ) : (
+            <>
+              <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              <Pin className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              <Users
+                onClick={() => setIsMembersOpen(o => !o)}
+                className={`w-5 h-5 cursor-pointer transition-colors ${
+                  isMembersOpen
+                    ? 'text-white'
+                    : `${textMuted} ${hoverIconMuted}`
+                }`}
+              />
+              <Search className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              <Inbox className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              <CircleHelp className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+            </>
+          )}
         </div>
       </div>
 
