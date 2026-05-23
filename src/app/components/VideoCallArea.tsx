@@ -19,6 +19,7 @@ import type { Channel, Message, FileAttachment } from '@/types';
 import { useTheme } from '@/lib/theme-context';
 import { useVoiceCall } from '../../hooks/useVoiceCall';
 import type { VoiceParticipant } from '../../hooks/useVoiceCall';
+import { setVoiceChannelParticipants, clearVoiceChannelParticipants } from '../../hooks/voiceChannelStore';
 
 interface VideoCallAreaProps {
   channel: Channel;
@@ -203,6 +204,19 @@ function ActiveCallView({
     isCameraOn,
   };
   const allParticipants = [localParticipant, ...participants];
+
+  // Sync participant list to the module store so ChannelSidebar can read it.
+  // Uses participants.length as a stable dependency proxy.
+  useEffect(() => {
+    setVoiceChannelParticipants(
+      channel.id,
+      allParticipants.map(p => ({ userId: p.userId, username: p.username })),
+    );
+    return () => {
+      clearVoiceChannelParticipants(channel.id);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participants]);
 
   const colClass =
     allParticipants.length === 1

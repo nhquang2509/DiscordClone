@@ -23,6 +23,8 @@ import { CreateChannelModal } from './CreateChannelModal';
 import { useTheme } from '@/lib/theme-context';
 import type { Channel } from '@/types';
 import type { MemberRole } from '../../hooks/useServerMembers';
+import type { VoicePresenceUser } from '../../hooks/voiceChannelStore';
+import { useVoiceChannelStore } from '../../hooks/voiceChannelStore';
 
 interface ChannelSidebarProps {
   serverName: string;
@@ -57,6 +59,9 @@ export function ChannelSidebar({
   onManageMembers,
   onMemberList,
 }: ChannelSidebarProps) {
+  // Local store fed by ActiveCallView — always up-to-date, no Supabase timing issues.
+  const mergedVoicePresence = useVoiceChannelStore();
+
   const { resolvedTheme, theme, setTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
@@ -139,17 +144,18 @@ export function ChannelSidebar({
         const isActive = channel.id === selectedChannelId;
         const isGeneral = channel.name === 'general' && channel.type === 'text';
         const isEditing = editingChannelId === channel.id;
+        const channelUsers = mergedVoicePresence[channel.id] ?? [];
 
         return (
-          <div
-            key={channel.id}
-            onClick={() => !isEditing && onSelectChannel(channel.id)}
-            className={`px-2 py-1.5 mx-2 rounded flex items-center gap-1.5 cursor-pointer group/ch ${
-              isActive
-                ? `${activeBg} ${textPrimary}`
-                : `${textMuted} ${hoverBg} ${channelHoverText}`
-            }`}
-          >
+          <div key={channel.id}>
+            <div
+              onClick={() => !isEditing && onSelectChannel(channel.id)}
+              className={`px-2 py-1.5 mx-2 rounded flex items-center gap-1.5 cursor-pointer group/ch ${
+                isActive
+                  ? `${activeBg} ${textPrimary}`
+                  : `${textMuted} ${hoverBg} ${channelHoverText}`
+              }`}
+            >
             <Icon className="w-5 h-5 flex-shrink-0" />
 
             {isEditing ? (
@@ -214,6 +220,26 @@ export function ChannelSidebar({
                   ) : null}
                 </div>
               </>
+            )}
+            </div>
+
+            {/* Real-time participant list — voice/video channels only */}
+            {channelUsers.length > 0 && (
+              <div className="ml-4 mt-0.5 mb-1 space-y-0.5">
+                {channelUsers.map(u => (
+                  <div
+                    key={u.userId}
+                    className={`flex items-center gap-2 px-2 py-0.5 mx-2 rounded ${hoverBg}`}
+                  >
+                    <div
+                      className="w-5 h-5 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                    >
+                      {u.username.charAt(0).toUpperCase()}
+                    </div>
+                    <span className={`text-xs ${textMuted} truncate`}>{u.username}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         );
