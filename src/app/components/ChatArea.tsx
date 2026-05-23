@@ -43,6 +43,7 @@ interface ChatAreaProps {
   loadMore: () => void;
   hasMore: boolean;
   isLoadingMore: boolean;
+  partnerName?: string;
 }
 
 export function ChatArea({
@@ -59,6 +60,7 @@ export function ChatArea({
   loadMore,
   hasMore,
   isLoadingMore,
+  partnerName,
 }: ChatAreaProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
@@ -236,18 +238,37 @@ export function ChatArea({
         )}
         {/* Welcome header (always shown at top) */}
         <div className="mb-6">
-          <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center mb-4">
-            <Hash className="w-8 h-8 text-white" />
-          </div>
-          <h2
-            className={`${textPrimary} font-bold mb-2`}
-            style={{ fontSize: '1.75rem' }}
-          >
-            Welcome to #{channel.name}!
-          </h2>
-          <p className={`${textMuted} text-sm`}>
-            This is the start of the #{channel.name} channel.
-          </p>
+          {channel.type === 'members' ? (
+            <>
+              <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center mb-4 text-white text-3xl font-bold">
+                {(partnerName ?? channel.name).charAt(0).toUpperCase()}
+              </div>
+              <h2
+                className={`${textPrimary} font-bold mb-2`}
+                style={{ fontSize: '1.75rem' }}
+              >
+                {partnerName ?? channel.name}
+              </h2>
+              <p className={`${textMuted} text-sm`}>
+                This is a private chat
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center mb-4">
+                <Hash className="w-8 h-8 text-white" />
+              </div>
+              <h2
+                className={`${textPrimary} font-bold mb-2`}
+                style={{ fontSize: '1.75rem' }}
+              >
+                Welcome to #{channel.name}!
+              </h2>
+              <p className={`${textMuted} text-sm`}>
+                This is the start of the #{channel.name} channel.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Message list */}

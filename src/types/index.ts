@@ -3,7 +3,7 @@ export type Theme = 'dark' | 'light' | 'system';
 export interface Channel {
   id: string;
   name: string;
-  type: 'text' | 'audio' | 'video';
+  type: 'text' | 'audio' | 'video' | 'members';
 }
 
 export interface FileAttachment {

@@ -7,6 +7,7 @@ import { useServers } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
 import { useMessages } from '@/hooks/useMessages';
 import { useServerMembers } from '@/hooks/useServerMembers';
+import { useDmInvitations } from '@/hooks/useDmInvitations';
 import { supabase } from '@/lib/supabase/client';
 import { ThemeContext } from '@/lib/theme-context';
 import { ServerSidebar } from '@/app/components/ServerSidebar';
@@ -52,6 +53,8 @@ export default function HomePage() {
     selectedServerId,
     user?.id ?? null,
   );
+  const { dmChannelMap, pendingInvitations, createDmChannel, acceptInvitation } =
+    useDmInvitations(selectedServerId, user?.id ?? null);
 
   const resolvedTheme: 'dark' | 'light' =
     theme === 'system'
@@ -85,6 +88,27 @@ export default function HomePage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const handleCreateDm = async (member: { userId: string; username: string }) => {
+    if (!selectedServerId || !user) return;
+    const channelId = await createDmChannel({
+      serverId: selectedServerId,
+      inviterId: user.id,
+      inviterName: displayName,
+      inviteeId: member.userId,
+      inviteeName: member.username,
+    });
+    if (channelId) {
+      setSelectedChannelIds((prev) => ({ ...prev, [selectedServerId]: channelId }));
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: string) => {
+    const channelId = await acceptInvitation(invitationId);
+    if (channelId && selectedServerId) {
+      setSelectedChannelIds((prev) => ({ ...prev, [selectedServerId]: channelId }));
+    }
+  };
 
   const handleQuitServer = async (serverId: string) => {
     const remaining = servers.filter((s) => s.id !== serverId);
@@ -220,6 +244,12 @@ export default function HomePage() {
                 setIsManageMembersOpen(true);
                 setManageMembersReadOnly(true);
               }}
+              members={members}
+              currentUserId={user.id}
+              dmChannelMap={dmChannelMap}
+              pendingInvitations={pendingInvitations}
+              onCreateDm={handleCreateDm}
+              onAcceptInvitation={handleAcceptInvitation}
             />
             <ManageMembersModal
               isOpen={isManageMembersOpen}
@@ -242,6 +272,11 @@ export default function HomePage() {
               loadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
+              partnerName={
+                currentChannel?.type === 'members' && currentChannelId
+                  ? dmChannelMap[currentChannelId]?.partnerName
+                  : undefined
+              }
               onSendMessage={(content, files) =>
                 currentChannelId && handleSendMessage(currentChannelId, content, files)
               }

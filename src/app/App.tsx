@@ -10,6 +10,7 @@ import { useServers } from '../hooks/useServers';
 import { useChannels } from '../hooks/useChannels';
 import { useMessages } from '../hooks/useMessages';
 import { useServerMembers } from '../hooks/useServerMembers';
+import { useDmInvitations } from '../hooks/useDmInvitations';
 import { supabase } from '../lib/supabase/client';
 export type { MemberRole } from '../hooks/useServerMembers';
 
@@ -32,7 +33,7 @@ export const useTheme = () => useContext(ThemeContext);
 export interface Channel {
   id: string;
   name: string;
-  type: 'text' | 'audio' | 'video';
+  type: 'text' | 'audio' | 'video' | 'members';
 }
 
 export interface FileAttachment {
@@ -94,6 +95,8 @@ export default function App() {
   const currentChannelId = selectedServerId ? (selectedChannelIds[selectedServerId] ?? null) : null;
   const { channels, createChannel, deleteChannel, renameChannel } = useChannels(selectedServerId);
   const { messages, sendMessage, deleteMessage: deleteMsg, editMessage, loadMore, hasMore, isLoadingMore } = useMessages(currentChannelId);  const { members, myRole, setMemberRole, kickMember } = useServerMembers(selectedServerId, user?.id ?? null);
+  const { dmChannelMap, pendingInvitations, createDmChannel, acceptInvitation } =
+    useDmInvitations(selectedServerId, user?.id ?? null);
   const resolvedTheme: 'dark' | 'light' =
     theme === 'system'
       ? window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -126,6 +129,27 @@ export default function App() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const handleCreateDm = async (member: { userId: string; username: string }) => {
+    if (!selectedServerId || !user) return;
+    const channelId = await createDmChannel({
+      serverId: selectedServerId,
+      inviterId: user.id,
+      inviterName: displayName,
+      inviteeId: member.userId,
+      inviteeName: member.username,
+    });
+    if (channelId) {
+      setSelectedChannelIds(prev => ({ ...prev, [selectedServerId]: channelId }));
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: string) => {
+    const channelId = await acceptInvitation(invitationId);
+    if (channelId && selectedServerId) {
+      setSelectedChannelIds(prev => ({ ...prev, [selectedServerId]: channelId }));
+    }
+  };
 
   const handleQuitServer = async (serverId: string) => {
     const remaining = servers.filter(s => s.id !== serverId);
@@ -250,6 +274,12 @@ export default function App() {
               onGenerateInviteCode={() => generateInviteCode(currentServer.id)}
               onManageMembers={() => { setIsManageMembersOpen(true); setManageMembersReadOnly(false); }}
               onMemberList={() => { setIsManageMembersOpen(true); setManageMembersReadOnly(true); }}
+              members={members}
+              currentUserId={user.id}
+              dmChannelMap={dmChannelMap}
+              pendingInvitations={pendingInvitations}
+              onCreateDm={handleCreateDm}
+              onAcceptInvitation={handleAcceptInvitation}
             />
             <ManageMembersModal
               isOpen={isManageMembersOpen}
