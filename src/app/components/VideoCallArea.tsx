@@ -13,6 +13,7 @@ import {
   X,
   Users,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { Channel, Message, FileAttachment } from '@/types';
@@ -100,9 +101,11 @@ function VideoTile({
 function LobbyView({
   channel,
   onJoin,
+  onBack,
 }: {
   channel: Channel;
   onJoin: () => void;
+  onBack?: () => void;
 }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
@@ -128,13 +131,28 @@ function LobbyView({
         </p>
       </div>
 
-      <button
-        onClick={onJoin}
-        className="bg-[#248046] hover:bg-[#1a6334] text-white px-8 py-3 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
-      >
-        <PhoneCall className="w-4 h-4" />
-        Join call
-      </button>
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className={`px-6 py-3 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors border ${
+              isDark
+                ? 'border-[#404249] text-[#b5bac1] hover:bg-[#404249] hover:text-white'
+                : 'border-[#d5d7db] text-[#4e5058] hover:bg-[#d5d7db] hover:text-[#2e3338]'
+            }`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+        )}
+        <button
+          onClick={onJoin}
+          className="bg-[#248046] hover:bg-[#1a6334] text-white px-8 py-3 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors"
+        >
+          <PhoneCall className="w-4 h-4" />
+          Join call
+        </button>
+      </div>
     </div>
   );
 }
@@ -489,7 +507,7 @@ export function VideoCallArea({
   };
 
   if (!isJoined) {
-    return <LobbyView channel={channel} onJoin={handleJoin} />;
+    return <LobbyView channel={channel} onJoin={handleJoin} onBack={onClose} />;
   }
 
   return (
