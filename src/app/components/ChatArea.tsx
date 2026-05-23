@@ -134,9 +134,13 @@ export function ChatArea({
   }
 
   // Voice / Video call view
+  // key={channel.id} forces a full remount when the channel changes,
+  // which resets isJoined to false and triggers useVoiceCall cleanup
+  // (auto-leaving the previous call).
   if (channel.type === 'audio' || channel.type === 'video') {
     return (
       <VideoCallArea
+        key={channel.id}
         channel={channel}
         messages={messages}
         currentUserId={currentUserId}

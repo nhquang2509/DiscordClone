@@ -336,6 +336,10 @@ export function useVoiceCall(channelId: string, userId: string, username: string
       mounted = false;
       if (retrackTimerRef.current) { clearTimeout(retrackTimerRef.current); retrackTimerRef.current = null; }
       if (!channelRef.current) return; // already cleaned up by leaveCall
+      // Notify peers immediately that we left (fire-and-forget).
+      // This covers the case where the user switches channels without clicking
+      // the Leave button, so peers don't have to wait for Presence timeout.
+      channelRef.current.send({ type: 'broadcast', event: 'user-left', payload: { userId } }).catch(() => {});
       channelRef.current.untrack();
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
