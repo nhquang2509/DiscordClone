@@ -23,8 +23,8 @@ import { CreateChannelModal } from './CreateChannelModal';
 import { useTheme } from '@/lib/theme-context';
 import type { Channel } from '@/types';
 import type { MemberRole } from '../../hooks/useServerMembers';
-import type { VoicePresenceUser } from '../../hooks/voiceChannelStore';
 import { useVoiceChannelStore } from '../../hooks/voiceChannelStore';
+import { useVoiceChannelSidebar } from '../../hooks/useVoiceChannelSidebar';
 
 interface ChannelSidebarProps {
   serverName: string;
@@ -59,8 +59,12 @@ export function ChannelSidebar({
   onManageMembers,
   onMemberList,
 }: ChannelSidebarProps) {
-  // Local store fed by ActiveCallView — always up-to-date, no Supabase timing issues.
-  const mergedVoicePresence = useVoiceChannelStore();
+  // Local store: immediate data for the current user's own active call.
+  const localVoiceMap = useVoiceChannelStore();
+  // Server-wide: real-time presence data from all OTHER voice/video channels.
+  const externalVoiceMap = useVoiceChannelSidebar(channels);
+  // Merge — local store takes priority (instant, no network delay).
+  const mergedVoicePresence = { ...externalVoiceMap, ...localVoiceMap };
 
   const { resolvedTheme, theme, setTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';

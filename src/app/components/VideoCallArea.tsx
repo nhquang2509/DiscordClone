@@ -19,7 +19,7 @@ import type { Channel, Message, FileAttachment } from '@/types';
 import { useTheme } from '@/lib/theme-context';
 import { useVoiceCall } from '../../hooks/useVoiceCall';
 import type { VoiceParticipant } from '../../hooks/useVoiceCall';
-import { setVoiceChannelParticipants, clearVoiceChannelParticipants } from '../../hooks/voiceChannelStore';
+import { setVoiceChannelParticipants, clearVoiceChannelParticipants, setMyVoiceChannelId } from '../../hooks/voiceChannelStore';
 
 interface VideoCallAreaProps {
   channel: Channel;
@@ -207,6 +207,17 @@ function ActiveCallView({
 
   // Sync participant list to the module store so ChannelSidebar can read it.
   // Uses participants.length as a stable dependency proxy.
+  useEffect(() => {
+    // Signal immediately that this client is in this channel, so the sidebar
+    // hook can stop subscribing to this channel's own presence (Phoenix rule:
+    // a client cannot subscribe to the same topic twice).
+    setMyVoiceChannelId(channel.id);
+    return () => {
+      setMyVoiceChannelId(null);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id]);
+
   useEffect(() => {
     setVoiceChannelParticipants(
       channel.id,

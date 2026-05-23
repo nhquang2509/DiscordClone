@@ -61,3 +61,34 @@ export function useVoiceChannelStore(): ChannelMap {
 
   return state;
 }
+
+// ─── Current user's active voice channel ─────────────────────────────────────
+// A direct signal set by ActiveCallView so other hooks react instantly
+// without depending on the participants-based ChannelMap above.
+
+let myVoiceChannelId: string | null = null;
+const myChannelListeners = new Set<(id: string | null) => void>();
+
+/**
+ * Called by ActiveCallView on mount (channel joined) and unmount (channel left).
+ * Notifies useVoiceChannelSidebar immediately so it can manage subscriptions.
+ */
+export function setMyVoiceChannelId(channelId: string | null): void {
+  myVoiceChannelId = channelId;
+  myChannelListeners.forEach(l => l(channelId));
+}
+
+/** React hook — re-renders only when the current user's voice channel changes. */
+export function useMyVoiceChannelId(): string | null {
+  const [id, setId] = useState<string | null>(myVoiceChannelId);
+
+  useEffect(() => {
+    setId(myVoiceChannelId);
+    myChannelListeners.add(setId);
+    return () => {
+      myChannelListeners.delete(setId);
+    };
+  }, []);
+
+  return id;
+}
