@@ -31,6 +31,7 @@ import { VideoCallArea } from './VideoCallArea';
 import { AttachmentModal } from './AttachmentModal';
 import type { Channel, Message, FileAttachment } from '@/types';
 import type { ServerMember, MemberRole } from '../../hooks/useServerMembers';
+import { useDmCallSignal } from '../../hooks/useDmCallSignal';
 
 interface ChatAreaProps {
   channel: Channel | null;
@@ -76,6 +77,28 @@ export function ChatArea({
   const [isMembersOpen, setIsMembersOpen] = useState(false);
   const [openRoleMenuId, setOpenRoleMenuId] = useState<string | null>(null);
   const [dmCallMode, setDmCallMode] = useState<'none' | 'audio' | 'video'>('none');
+  const [showCallNotif, setShowCallNotif] = useState(false);
+
+  // DM call signaling (only active for members channels)
+  const { incomingCall, broadcastCallStarted, broadcastCallEnded, dismissIncomingCall } =
+    useDmCallSignal(
+      channel?.type === 'members' ? channel.id : null,
+      currentUserId,
+      currentUsername,
+    );
+
+  // Auto-show notification popup when an incoming call arrives
+  useEffect(() => {
+    if (incomingCall) setShowCallNotif(true);
+  }, [incomingCall]);
+
+  // Clear incoming call notification when current user joins a call
+  useEffect(() => {
+    if (dmCallMode !== 'none') {
+      dismissIncomingCall();
+      setShowCallNotif(false);
+    }
+  }, [dmCallMode, dismissIncomingCall]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Saved scrollHeight before loadMore — used to restore scroll position after prepend
@@ -180,7 +203,7 @@ export function ChatArea({
         onSendMessage={onSendMessage}
         onDeleteMessage={onDeleteMessage}
         onEditMessage={onEditMessage}
-        onClose={() => setDmCallMode('none')}
+        onClose={() => { setDmCallMode('none'); broadcastCallEnded(); }}
       />
     );
   }
@@ -249,14 +272,66 @@ export function ChatArea({
           {channel.type === 'members' ? (
             <>
               <Phone
-                onClick={() => setDmCallMode('audio')}
+                onClick={() => { setDmCallMode('audio'); broadcastCallStarted('audio'); }}
                 className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`}
               />
               <Video
-                onClick={() => setDmCallMode('video')}
+                onClick={() => { setDmCallMode('video'); broadcastCallStarted('video'); }}
                 className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`}
               />
-              <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              {/* Bell with incoming call notification */}
+              <div className="relative">
+                <div
+                  className="relative cursor-pointer"
+                  onClick={() => setShowCallNotif(v => !v)}
+                >
+                  <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} transition-colors`} />
+                  {incomingCall && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#ed4245] rounded-full border-2 border-[#313338]" />
+                  )}
+                </div>
+                {showCallNotif && incomingCall && (
+                  <div
+                    className="absolute right-0 top-full mt-2 w-72 rounded-lg shadow-xl z-[200] p-4"
+                    style={{
+                      background: isDark ? '#2b2d31' : '#f2f3f5',
+                      border: `1px solid ${isDark ? '#1e1f22' : '#e3e5e8'}`,
+                    }}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {incomingCall.callerName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className={`${textPrimary} font-semibold text-sm`}>{incomingCall.callerName}</p>
+                        <p className={`text-xs ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>
+                          {incomingCall.type === 'video' ? 'Incoming video call...' : 'Incoming voice call...'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setDmCallMode(incomingCall.type);
+                          dismissIncomingCall();
+                          setShowCallNotif(false);
+                        }}
+                        className="flex-1 bg-[#248046] hover:bg-[#1a6334] text-white text-sm font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Phone className="w-4 h-4" />
+                        Answer
+                      </button>
+                      <button
+                        onClick={() => { dismissIncomingCall(); setShowCallNotif(false); }}
+                        className="flex-1 bg-[#ed4245] hover:bg-[#c03537] text-white text-sm font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <Pin className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
             </>
           ) : (
@@ -291,7 +366,7 @@ export function ChatArea({
             {isLoadingMore ? (
               <div className="w-5 h-5 rounded-full border-2 border-[#5865f2] border-t-transparent animate-spin" />
             ) : (
-              <span className={`text-xs ${isDark ? 'text-[#72767d]' : 'text-[#747f8d]'}`}>Cuon len de tai them</span>
+              <span className={`text-xs ${isDark ? 'text-[#72767d]' : 'text-[#747f8d]'}`}>Scroll up to load more</span>
             )}
           </div>
         )}
@@ -551,7 +626,7 @@ export function ChatArea({
       {isMembersOpen && (
         <div className={`w-60 flex-shrink-0 flex flex-col border-l ${isDark ? 'bg-[#2b2d31] border-[#1e1f22]' : 'bg-[#f2f3f5] border-[#e3e5e8]'}`}>
           <div className={`px-3 pt-4 pb-2 text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>
-            Thành viên — {members.length}
+            Members — {members.length}
           </div>
           <div className="flex-1 overflow-y-auto px-2">
             {members.map(member => (
@@ -582,7 +657,7 @@ export function ChatArea({
                     <button
                       onClick={() => setOpenRoleMenuId(openRoleMenuId === member.userId ? null : member.userId)}
                       className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-[#5a5d68] text-[#949ba4]' : 'hover:bg-[#c5c8cc] text-[#5c5f66]'}`}
-                      title="Đổi role"
+                      title="Change role"
                     >
                       <ChevronDown className="w-3.5 h-3.5" />
                     </button>
@@ -662,7 +737,7 @@ function AttachmentDisplay({ file, isDark }: { file: FileAttachment; isDark: boo
           />
           <button
             onClick={handleDownload}
-            title="Tải ảnh"
+            title="Download image"
             className="absolute bottom-2 right-2 opacity-0 group-hover/img:opacity-100 transition-opacity bg-black/60 text-white rounded-full p-1.5 hover:bg-black/80"
           >
             <Download className="w-3.5 h-3.5" />
@@ -687,14 +762,14 @@ function AttachmentDisplay({ file, isDark }: { file: FileAttachment; isDark: boo
               <div className="absolute top-0 right-0 flex gap-2">
                 <button
                   onClick={handleDownload}
-                  title="Tải ảnh"
+                  title="Upload image"
                   className="bg-black/60 text-white rounded-full p-2 hover:bg-black/80 transition-colors"
                 >
                   <Download className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setLightboxOpen(false)}
-                  title="Đóng"
+                  title="Close"
                   className="bg-black/60 text-white rounded-full p-2 hover:bg-black/80 transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -727,7 +802,7 @@ function AttachmentDisplay({ file, isDark }: { file: FileAttachment; isDark: boo
       </div>
       <button
         onClick={handleDownload}
-        title="Tải file"
+        title="Upload file"
         className={`flex-shrink-0 p-1.5 rounded transition-colors ${
           isDark ? 'text-[#949ba4] hover:text-white hover:bg-[#5a5d68]' : 'text-[#747f8d] hover:text-[#2e3338] hover:bg-[#d4d7dc]'
         }`}

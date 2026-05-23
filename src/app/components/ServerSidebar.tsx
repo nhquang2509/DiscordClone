@@ -117,7 +117,7 @@ export function ServerSidebar({
           <button
             onClick={() => setIsThemeOpen(o => !o)}
             className={`w-12 h-12 rounded-[24px] ${btnInactive} flex items-center justify-center hover:rounded-[16px] transition-all duration-200 ${textMuted}`}
-            title="Đổi theme"
+            title="Toggle theme"
           >
             {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
           </button>
@@ -160,7 +160,7 @@ export function ServerSidebar({
               className={`absolute bottom-0 left-full ml-3 ${dropdownBg} ${dropdownBorder} rounded-md shadow-lg py-1 z-50 min-w-[200px]`}
             >
               <div className={`px-3 py-2 border-b ${isDark ? 'border-[#3f4147]' : 'border-[#e3e5e8]'}`}>
-                <p className={`text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Đã đăng nhập với</p>
+                <p className={`text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Logged in as</p>
                 <p className={`text-sm font-semibold ${textPrimary} truncate mt-0.5`}>{displayName}</p>
                 <p className={`text-xs ${textMuted} truncate`}>{user?.email}</p>
               </div>
@@ -171,7 +171,7 @@ export function ServerSidebar({
                 }}
                 className="w-full px-3 py-2 text-left text-[#f23f42] hover:bg-[#f23f42] hover:text-white flex items-center justify-between transition-colors"
               >
-                <span className="text-sm">Đăng xuất</span>
+                <span className="text-sm">Sign out</span>
                 <LogOut className="w-4 h-4" />
               </button>
             </div>

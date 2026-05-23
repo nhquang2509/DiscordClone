@@ -42,7 +42,7 @@ export function AuthPage() {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Đăng nhập thành công!");
+        toast.success("Logged in successfully!");
       }
     } else {
       const { error } = await supabase.auth.signUp({
@@ -58,7 +58,7 @@ export function AuthPage() {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Đăng ký thành công! Kiểm tra email để xác nhận.");
+        toast.success("Registered successfully! Check your email to confirm.");
       }
     }
 
@@ -73,12 +73,12 @@ export function AuthPage() {
         <div className="text-center space-y-1">
           <div className="text-5xl mb-3">🎮</div>
           <h1 className="text-2xl font-bold text-white">
-            {tab === "login" ? "Chào mừng trở lại!" : "Tạo tài khoản"}
+            {tab === "login" ? "Welcome back!" : "Create an account"}
           </h1>
           <p className="text-[#b5bac1] text-sm">
             {tab === "login"
-              ? "Chúng tôi rất vui khi gặp lại bạn!"
-              : "Tham gia cộng đồng Discord Clone"}
+              ? "We're so excited to see you again!"
+              : "Join the Discord Clone community"}
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export function AuthPage() {
                 : "bg-[#1e1f22] text-[#b5bac1] hover:text-white"
             }`}
           >
-            Đăng nhập
+            Log In
           </button>
           <button
             type="button"
@@ -104,7 +104,7 @@ export function AuthPage() {
                 : "bg-[#1e1f22] text-[#b5bac1] hover:text-white"
             }`}
           >
-            Đăng ký
+            Register
           </button>
         </div>
 
@@ -115,14 +115,14 @@ export function AuthPage() {
           {tab === "register" && (
             <div className="space-y-1.5">
               <Label className="text-[#b5bac1] text-xs font-bold uppercase tracking-wide">
-                Tên người dùng
+                Username
               </Label>
               <Input
-                placeholder="tên_của_bạn"
+                placeholder="your_name"
                 className="bg-[#1e1f22] border-[#1e1f22] text-white placeholder:text-[#6d6f78] focus-visible:border-[#5865f2]"
                 {...register("username", {
-                  required: "Vui lòng nhập tên người dùng",
-                  minLength: { value: 2, message: "Tối thiểu 2 ký tự" },
+                  required: "Please enter a username",
+                  minLength: { value: 2, message: "Minimum 2 characters" },
                 })}
               />
               {errors.username && (
@@ -141,10 +141,10 @@ export function AuthPage() {
               placeholder="you@example.com"
               className="bg-[#1e1f22] border-[#1e1f22] text-white placeholder:text-[#6d6f78] focus-visible:border-[#5865f2]"
               {...register("email", {
-                required: "Vui lòng nhập email",
+                required: "Please enter your email",
                 pattern: {
                   value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: "Email không hợp lệ",
+                  message: "Invalid email address",
                 },
               })}
             />
@@ -156,15 +156,15 @@ export function AuthPage() {
           {/* Password */}
           <div className="space-y-1.5">
             <Label className="text-[#b5bac1] text-xs font-bold uppercase tracking-wide">
-              Mật khẩu
+              Password
             </Label>
             <Input
               type="password"
               placeholder="••••••••"
               className="bg-[#1e1f22] border-[#1e1f22] text-white placeholder:text-[#6d6f78] focus-visible:border-[#5865f2]"
               {...register("password", {
-                required: "Vui lòng nhập mật khẩu",
-                minLength: { value: 6, message: "Mật khẩu tối thiểu 6 ký tự" },
+                required: "Please enter your password",
+                minLength: { value: 6, message: "Password must be at least 6 characters" },
               })}
             />
             {errors.password && (
@@ -179,22 +179,22 @@ export function AuthPage() {
             className="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium h-10"
           >
             {isLoading
-              ? "Đang xử lý..."
+              ? "Logging in..."
               : tab === "login"
-              ? "Đăng nhập"
-              : "Tạo tài khoản"}
+              ? "Log In"
+              : "Create Account"}
           </Button>
         </form>
 
         {/* Footer link */}
         <p className="text-center text-sm text-[#b5bac1]">
-          {tab === "login" ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
+          {tab === "login" ? "Don't have an account? " : "Already have an account? "}
           <button
             type="button"
             onClick={() => switchTab(tab === "login" ? "register" : "login")}
             className="text-[#00a8fc] hover:underline"
           >
-            {tab === "login" ? "Đăng ký ngay" : "Đăng nhập"}
+            {tab === "login" ? "Register now" : "Log in"}
           </button>
         </p>
       </div>
