@@ -496,10 +496,12 @@ function DropdownItem({
   label: string;
   onClick: () => void;
 }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   return (
     <button
       onClick={onClick}
-      className="w-full px-3 py-2 text-left text-[#b5bac1] hover:bg-[#5865f2] hover:text-white flex items-center justify-between group transition-colors"
+      className={`w-full px-3 py-2 text-left hover:bg-[#5865f2] hover:text-white flex items-center justify-between group transition-colors ${isDark ? 'text-[#b5bac1]' : 'text-[#313338]'}`}
     >
       <span className="text-sm">{label}</span>
       <Icon className="w-4 h-4" />

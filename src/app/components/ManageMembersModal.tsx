@@ -12,6 +12,7 @@ import {
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { MemberRole, ServerMember } from '../../hooks/useServerMembers';
+import { useTheme } from '@/lib/theme-context';
 
 interface ManageMembersModalProps {
   isOpen: boolean;
@@ -55,6 +56,18 @@ export function ManageMembersModal({
   const [showRoleSubmenu, setShowRoleSubmenu] = useState(false);
   // Position of the dropdown menu (fixed, relative to viewport)
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  // Theme tokens
+  const modalBg = isDark ? 'bg-[#313338]' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-[#313338]';
+  const textMuted = isDark ? 'text-[#949ba4]' : 'text-[#4e5058]';
+  const textSub = isDark ? 'text-[#949ba4]' : 'text-[#80848e]';
+  const hoverRow = isDark ? 'hover:bg-[#35363c]' : 'hover:bg-[#f2f3f5]';
+  const closeBtn = isDark ? 'text-[#949ba4] hover:text-white' : 'text-[#4e5058] hover:text-[#1e1f22]';
+  const dotBtn = isDark ? 'text-[#949ba4] hover:text-white hover:bg-[#4e5058]' : 'text-[#80848e] hover:text-[#313338] hover:bg-[#e3e5e8]';
 
   if (!isOpen) return null;
 
@@ -164,21 +177,21 @@ export function ManageMembersModal({
         onClick={() => { onClose(); closeMenu(); }}
       >
         <div
-          className="bg-white rounded-lg w-[480px] max-h-[600px] flex flex-col relative"
+          className={`${modalBg} rounded-lg w-[480px] max-h-[600px] flex flex-col relative`}
           onClick={e => e.stopPropagation()}
         >
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-[#4e5058] hover:text-[#1e1f22] transition-colors z-10"
+            className={`absolute top-4 right-4 ${closeBtn} transition-colors z-10`}
           >
             <X className="w-6 h-6" />
           </button>
 
           {/* Header */}
           <div className="text-center pt-6 pb-2 px-6">
-            <h2 className="text-[#313338] text-2xl font-bold">{readOnly ? 'Member List' : 'Manage Members'}</h2>
-            <p className="text-[#4e5058] text-sm mt-1">{members.length} Members</p>
+            <h2 className={`${textPrimary} text-2xl font-bold`}>{readOnly ? 'Member List' : 'Manage Members'}</h2>
+            <p className={`${textMuted} text-sm mt-1`}>{members.length} Members</p>
           </div>
 
           {/* Member list — overflow-y-auto no longer clips the menu */}
@@ -196,7 +209,7 @@ export function ManageMembersModal({
               return (
                 <div
                   key={member.userId}
-                  className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-[#f2f3f5] group"
+                  className={`flex items-center gap-3 px-2 py-3 rounded-lg ${hoverRow} group`}
                 >
                   {/* Avatar */}
                   <div
@@ -209,19 +222,19 @@ export function ManageMembersModal({
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[#313338] font-semibold text-sm truncate">
+                      <span className={`${textPrimary} font-semibold text-sm truncate`}>
                         {member.username}
                       </span>
                       <RoleBadge role={member.role} />
                     </div>
-                    <span className="text-[#80848e] text-xs capitalize">{member.role}</span>
+                    <span className={`${textSub} text-xs capitalize`}>{member.role}</span>
                   </div>
 
                   {/* 3-dot button */}
                   {canSeeMenu && (
                     <button
                       onClick={e => openMenu(member.userId, e)}
-                      className={`p-1.5 rounded text-[#80848e] hover:text-[#313338] hover:bg-[#e3e5e8] transition-colors flex-shrink-0 ${
+                      className={`p-1.5 rounded ${dotBtn} transition-colors flex-shrink-0 ${
                         isMenuOpen
                           ? 'opacity-100'
                           : 'opacity-0 group-hover:opacity-100'

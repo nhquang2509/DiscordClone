@@ -3,6 +3,7 @@
 import { X, ChevronDown, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Channel } from '@/types';
+import { useTheme } from '@/lib/theme-context';
 
 interface CreateChannelModalProps {
   isOpen: boolean;
@@ -27,6 +28,19 @@ export function CreateChannelModal({
   const [type, setType] = useState<Channel['type']>(defaultType);
   const [isTypeOpen, setIsTypeOpen] = useState(false);
 
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  // Theme tokens
+  const modalBg = isDark ? 'bg-[#313338]' : 'bg-white';
+  const footerBg = isDark ? 'bg-[#2b2d31]' : 'bg-[#f2f3f5]';
+  const textPrimary = isDark ? 'text-white' : 'text-[#313338]';
+  const textMuted = isDark ? 'text-[#949ba4]' : 'text-[#4e5058]';
+  const inputBg = isDark ? 'bg-[#1e1f22] text-white placeholder:text-[#6d6f78]' : 'bg-[#e3e5e8] text-[#313338] placeholder:text-[#87898c]';
+  const typeBtnBg = isDark ? 'bg-[#1e1f22] text-white hover:bg-[#111214]' : 'bg-[#e3e5e8] text-[#313338] hover:bg-[#d5d7dc]';
+  const closeBtn = isDark ? 'text-[#949ba4] hover:text-white' : 'text-[#4e5058] hover:text-[#1e1f22]';
+  const labelColor = isDark ? 'text-[#b5bac1]' : 'text-[#313338]';
+
   useEffect(() => {
     if (isOpen) {
       setName('');
@@ -49,21 +63,21 @@ export function CreateChannelModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg w-[460px] relative"
+        className={`${modalBg} rounded-lg w-[460px] relative`}
         onClick={e => e.stopPropagation()}
       >
         <div className="p-6">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-[#4e5058] hover:text-[#1e1f22] transition-colors"
+            className={`absolute top-4 right-4 ${closeBtn} transition-colors`}
           >
             <X className="w-5 h-5" />
           </button>
 
-          <h2 className="text-[#313338] text-2xl font-bold mb-6 text-center">Create Channel</h2>
+          <h2 className={`${textPrimary} text-2xl font-bold mb-6 text-center`}>Create Channel</h2>
 
           <div className="mb-5">
-            <label className="block text-[#313338] text-xs font-bold uppercase tracking-wide mb-2">
+            <label className={`block ${labelColor} text-xs font-bold uppercase tracking-wide mb-2`}>
               Channel Name
             </label>
             <input
@@ -74,17 +88,17 @@ export function CreateChannelModal({
               onKeyDown={e => {
                 if (e.key === 'Enter') handleCreate();
               }}
-              className="w-full bg-[#e3e5e8] text-[#313338] px-3 py-2.5 rounded outline-none placeholder:text-[#87898c] focus:ring-2 focus:ring-[#5865f2]"
+              className={`w-full ${inputBg} px-3 py-2.5 rounded outline-none focus:ring-2 focus:ring-[#5865f2]`}
               autoFocus
             />
           </div>
 
           <div className="mb-2">
-            <label className="block text-[#313338] text-sm font-semibold mb-2">Channel Type</label>
+            <label className={`block ${textPrimary} text-sm font-semibold mb-2`}>Channel Type</label>
             <div className="relative">
               <button
                 onClick={() => setIsTypeOpen(o => !o)}
-                className="w-full bg-[#e3e5e8] text-[#313338] px-3 py-2.5 rounded flex items-center justify-between hover:bg-[#d5d7dc] transition-colors"
+                className={`w-full ${typeBtnBg} px-3 py-2.5 rounded flex items-center justify-between transition-colors`}
               >
                 <span>{TYPE_OPTIONS.find(o => o.value === type)?.label}</span>
                 <ChevronDown className="w-4 h-4" />
@@ -119,7 +133,7 @@ export function CreateChannelModal({
           </div>
         </div>
 
-        <div className="bg-[#f2f3f5] px-6 py-4 flex justify-end">
+        <div className={`${footerBg} px-6 py-4 flex justify-end rounded-b-lg`}>
           <button
             onClick={handleCreate}
             disabled={!name.trim()}
