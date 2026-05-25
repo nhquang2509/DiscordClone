@@ -84,7 +84,11 @@ export function useMessages(channelId: string | null) {
     const rows = (data ?? []).map(mapRow).reverse(); // oldest first
     if (rows.length > 0) {
       oldestCreatedAtRef.current = data![data!.length - 1].created_at;
-      setMessages(prev => [...rows, ...prev]);
+      setMessages(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const newRows = rows.filter(m => !existingIds.has(m.id));
+        return [...newRows, ...prev];
+      });
     }
     setHasMore((data ?? []).length === PAGE_SIZE);
     isLoadingMoreRef.current = false;
@@ -107,7 +111,10 @@ export function useMessages(channelId: string | null) {
             .select('*, file_attachments(*)')
             .eq('id', (payload.new as { id: string }).id)
             .single();
-          if (data) setMessages(prev => [...prev, mapRow(data)]);
+          if (data) setMessages(prev => {
+            if (prev.some(m => m.id === data.id)) return prev;
+            return [...prev, mapRow(data)];
+          });
         },
       )
       // Edit / soft-delete: update in place

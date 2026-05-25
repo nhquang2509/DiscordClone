@@ -28,6 +28,7 @@ import {
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '@/lib/theme-context';
+import { supabase } from '@/lib/supabase/client';
 import { VideoCallArea } from './VideoCallArea';
 import { AttachmentModal } from './AttachmentModal';
 import type { Channel, Message, FileAttachment } from '@/types';
@@ -92,6 +93,8 @@ export function ChatArea({
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [pendingScrollId, setPendingScrollId] = useState<string | null>(null);
   const [failedMessages, setFailedMessages] = useState<{ id: string; content: string }[]>([]);
+  const [pastedImages, setPastedImages] = useState<{ id: string; file: File; previewUrl: string }[]>([]);
+  const [isSendingPaste, setIsSendingPaste] = useState(false);
 
   // DM call signaling (only active for members channels)
   const { incomingCall, broadcastCallStarted, broadcastCallEnded, dismissIncomingCall } =
@@ -284,13 +287,55 @@ export function ChatArea({
 
   // ——— Text channel ———
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = Array.from(e.clipboardData.items).filter(item => item.type.startsWith('image/'));
+    if (items.length === 0) return;
+    e.preventDefault();
+    items.forEach(item => {
+      const file = item.getAsFile();
+      if (!file) return;
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const previewUrl = URL.createObjectURL(file);
+      setPastedImages(prev => [...prev, { id, file, previewUrl }]);
+    });
+  };
+
   const handleSend = async () => {
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() && pastedImages.length === 0) return;
     const content = messageInput.trim();
     setMessageInput('');
-    const success = await onSendMessage(content, []);
+
+    let files: import('@/types').FileAttachment[] = [];
+    const imagesToProcess = [...pastedImages];
+    setPastedImages([]);
+
+    if (imagesToProcess.length > 0) {
+      setIsSendingPaste(true);
+      try {
+        files = await Promise.all(
+          imagesToProcess.map(async ({ id, file, previewUrl }) => {
+            const ext = file.name.split('.').pop() || 'png';
+            const path = `${id}.${ext}`;
+            const { error } = await supabase.storage
+              .from('attachments')
+              .upload(path, file, { contentType: file.type });
+            if (error) return { id, name: file.name, fileType: 'image' as const, url: previewUrl };
+            const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
+            URL.revokeObjectURL(previewUrl);
+            return { id, name: file.name, fileType: 'image' as const, url: urlData.publicUrl };
+          })
+        );
+      } finally {
+        setIsSendingPaste(false);
+      }
+    }
+
+    const success = await onSendMessage(content, files);
     if (!success) {
-      setFailedMessages(prev => [...prev, { id: crypto.randomUUID(), content }]);
+      setFailedMessages(prev => [
+        ...prev,
+        { id: crypto.randomUUID(), content: content || `[${files.length} image(s)]` },
+      ]);
     }
   };
 
@@ -720,7 +765,16 @@ export function ChatArea({
                         )}
                       </p>
                       {msg.files.map(f => (
-                        <AttachmentDisplay key={f.id} file={f} isDark={isDark} />
+                        <AttachmentDisplay
+                          key={f.id}
+                          file={f}
+                          isDark={isDark}
+                          onLoad={() => {
+                            if (isAtBottomRef.current) {
+                              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }}
+                        />
                       ))}
                     </>
                   )}
@@ -791,6 +845,30 @@ export function ChatArea({
       {/* Input area */}
       <div className="px-4 pb-6 flex-shrink-0">
         <div className={`${inputBg} rounded-lg px-4 py-3`}>
+          {/* Pasted image previews */}
+          {pastedImages.length > 0 && (
+            <div className="flex gap-2 flex-wrap mb-2 pb-2" style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}` }}>
+              {pastedImages.map(img => (
+                <div key={img.id} className="relative group/img">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.previewUrl}
+                    alt="pasted"
+                    className="h-20 w-20 object-cover rounded"
+                  />
+                  <button
+                    onClick={() => {
+                      URL.revokeObjectURL(img.previewUrl);
+                      setPastedImages(prev => prev.filter(i => i.id !== img.id));
+                    }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#ed4245] rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsAttachmentOpen(true)}
@@ -801,12 +879,16 @@ export function ChatArea({
             </button>
             <input
               type="text"
-              placeholder={`Message #${channel.name}`}
+              placeholder={pastedImages.length > 0 ? 'Add a message (optional)' : `Message #${channel.name}`}
               value={messageInput}
               onChange={e => setMessageInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               className={`flex-1 bg-transparent outline-none ${textBody} ${isDark ? 'placeholder:text-[#6d6f78]' : 'placeholder:text-[#747f8d]'}`}
             />
+            {isSendingPaste && (
+              <div className="w-4 h-4 rounded-full border-2 border-[#5865f2] border-t-transparent animate-spin flex-shrink-0" />
+            )}
             <div className="flex items-center gap-2">
               <Gift className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
               <Sticker className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
@@ -1075,7 +1157,7 @@ function PinIconWithPanel({
   );
 }
 
-function AttachmentDisplay({ file, isDark }: { file: FileAttachment; isDark: boolean }) {
+function AttachmentDisplay({ file, isDark, onLoad }: { file: FileAttachment; isDark: boolean; onLoad?: () => void }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
@@ -1117,6 +1199,7 @@ function AttachmentDisplay({ file, isDark }: { file: FileAttachment; isDark: boo
             alt={file.name}
             className="rounded-lg max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
             onClick={() => setLightboxOpen(true)}
+            onLoad={onLoad}
           />
           <button
             onClick={handleDownload}
