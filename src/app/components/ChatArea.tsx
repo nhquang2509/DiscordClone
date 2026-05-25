@@ -83,6 +83,8 @@ export function ChatArea({
   const [showCallNotif, setShowCallNotif] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ msgId: string; x: number; y: number } | null>(null);
   const [showPinPanel, setShowPinPanel] = useState(false);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const [pendingScrollId, setPendingScrollId] = useState<string | null>(null);
 
   // DM call signaling (only active for members channels)
   const { incomingCall, broadcastCallStarted, broadcastCallEnded, dismissIncomingCall } =
@@ -128,6 +130,42 @@ export function ChatArea({
     if (!msg) return;
     await pinMessage(msgId, msg.content, msg.authorName);
   };
+
+  const scrollToMessage = (messageId: string) => {
+    setShowPinPanel(false);
+    const el = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMsgId(messageId);
+      setTimeout(() => setHighlightedMsgId(null), 2000);
+    } else {
+      // Message not in DOM yet — load older messages until it appears
+      setPendingScrollId(messageId);
+    }
+  };
+  // Effect: when pendingScrollId is set, try to scroll to the message.
+  // If not in DOM yet, load more (older) messages until it appears.
+  useEffect(() => {
+    if (!pendingScrollId) return;
+    const el = document.querySelector(`[data-message-id="${pendingScrollId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMsgId(pendingScrollId);
+      setTimeout(() => setHighlightedMsgId(null), 2000);
+      setPendingScrollId(null);
+    } else if (hasMore && !isLoadingMore) {
+      // Preserve scroll position while prepending older messages
+      if (scrollContainerRef.current) {
+        prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight;
+      }
+      loadMore();
+    } else if (!hasMore) {
+      // Message not found and no more pages — give up
+      setPendingScrollId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingScrollId, messages, hasMore, isLoadingMore]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Saved scrollHeight before loadMore — used to restore scroll position after prepend
@@ -386,6 +424,7 @@ export function ChatArea({
                 hoverIconMuted={hoverIconMuted}
                 isDark={isDark}
                 onSeePins={() => setShowPinPanel(true)}
+                onScrollToMessage={scrollToMessage}
               />
             </>
           ) : (
@@ -400,6 +439,7 @@ export function ChatArea({
                 hoverIconMuted={hoverIconMuted}
                 isDark={isDark}
                 onSeePins={() => setShowPinPanel(true)}
+                onScrollToMessage={scrollToMessage}
               />
               <Users
                 onClick={() => setIsMembersOpen(o => !o)}
@@ -504,7 +544,12 @@ export function ChatArea({
             return (
               <div
                 key={msg.id}
-                className={`group ${hoverBg} px-4 ${showAvatar ? 'pt-2 pb-1' : 'py-0.5'} -mx-4 flex gap-4 relative`}
+                data-message-id={msg.id}
+                className={`group ${hoverBg} px-4 ${showAvatar ? 'pt-2 pb-1' : 'py-0.5'} -mx-4 flex gap-4 relative transition-colors duration-300 ${
+                  highlightedMsgId === msg.id
+                    ? isDark ? 'bg-[#f0b132]/10' : 'bg-[#f0b132]/20'
+                    : ''
+                }`}
                 onContextMenu={(e) => {
                   if (msg.deleted) return;
                   e.preventDefault();
@@ -817,6 +862,7 @@ function PinIconWithPanel({
   textMuted,
   hoverIconMuted,
   isDark,
+  onScrollToMessage,
 }: {
   pinnedMessages: PinnedMessage[];
   showPinPanel: boolean;
@@ -825,6 +871,7 @@ function PinIconWithPanel({
   hoverIconMuted: string;
   isDark: boolean;
   onSeePins: () => void;
+  onScrollToMessage: (messageId: string) => void;
 }) {
   return (
     <div className="relative">
@@ -880,7 +927,12 @@ function PinIconWithPanel({
               style={{ borderColor: isDark ? '#1e1f22' : '#e3e5e8' }}
             >
               {pinnedMessages.map(pin => (
-                <div key={pin.id} className={`px-4 py-3 ${isDark ? 'hover:bg-[#35373c]' : 'hover:bg-[#e6e8eb]'} transition-colors`}>
+                <div
+                  key={pin.id}
+                  className={`px-4 py-3 cursor-pointer ${isDark ? 'hover:bg-[#35373c]' : 'hover:bg-[#e6e8eb]'} transition-colors`}
+                  onClick={() => onScrollToMessage(pin.messageId)}
+                  title="Click to jump to message"
+                >
                   <div className="flex items-start gap-2">
                     <Pin className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`} />
                     <div className="min-w-0 flex-1">
