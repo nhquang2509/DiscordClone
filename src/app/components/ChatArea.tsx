@@ -22,7 +22,6 @@ import {
   Download,
   Phone,
   Video,
-  User,
   AlertCircle,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';

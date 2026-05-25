@@ -18,7 +18,6 @@ import {
   Search,
   Bell,
   MessageSquare,
-  User,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { InvitePeopleModal } from './InvitePeopleModal';
@@ -506,25 +505,5 @@ function DropdownItem({
       <span className="text-sm">{label}</span>
       <Icon className="w-4 h-4" />
     </button>
-  );
-}
-
-function MemberItem({ name, status }: { name: string; status: 'online' | 'offline' }) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
-  return (
-    <div className={`px-2 py-1.5 mx-2 rounded flex items-center gap-2 cursor-pointer group ${isDark ? 'hover:bg-[#35363c]' : 'hover:bg-[#e0e1e5]'}`}>
-      <div className="relative">
-        <div className="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center">
-          <UserCircle2 className="w-6 h-6 text-white" />
-        </div>
-        <div
-          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 ${isDark ? 'border-[#2b2d31]' : 'border-[#f2f3f5]'} ${
-            status === 'online' ? 'bg-[#23a559]' : 'bg-[#80848e]'
-          }`}
-        />
-      </div>
-      <span className={`text-sm font-medium ${isDark ? 'text-[#949ba4] group-hover:text-[#dbdee1]' : 'text-[#5c5f66] group-hover:text-[#1e1f22]'}`}>{name}</span>
-    </div>
   );
 }
