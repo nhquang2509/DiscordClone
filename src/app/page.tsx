@@ -175,8 +175,8 @@ export default function HomePage() {
     _channelId: string,
     content: string,
     files: FileAttachment[],
-  ) => {
-    await sendMessage(user!.id, displayName, authorColor, content, files);
+  ): Promise<boolean> => {
+    return sendMessage(user!.id, displayName, authorColor, content, files);
   };
 
   const handleDeleteMessage = async (_channelId: string, messageId: string) => {
@@ -280,7 +280,7 @@ export default function HomePage() {
                   : undefined
               }
               onSendMessage={(content, files) =>
-                currentChannelId && handleSendMessage(currentChannelId, content, files)
+                currentChannelId ? handleSendMessage(currentChannelId, content, files) : Promise.resolve(false)
               }
               onDeleteMessage={(id) =>
                 currentChannelId && handleDeleteMessage(currentChannelId, id)

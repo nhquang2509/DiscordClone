@@ -210,8 +210,8 @@ export default function App() {
     await renameChannel(channelId, newName);
   };
 
-  const handleSendMessage = async (_channelId: string, content: string, files: FileAttachment[]) => {
-    await sendMessage(user!.id, displayName, authorColor, content, files);
+  const handleSendMessage = async (_channelId: string, content: string, files: FileAttachment[]): Promise<boolean> => {
+    return sendMessage(user!.id, displayName, authorColor, content, files);
   };
 
   const handleDeleteMessage = async (_channelId: string, messageId: string) => {
@@ -305,7 +305,7 @@ export default function App() {
               joinNotifications={serverNotifications}
               clearJoinNotifications={clearServerNotifications}
               onSendMessage={(content, files) =>
-                currentChannelId && handleSendMessage(currentChannelId, content, files)
+                currentChannelId ? handleSendMessage(currentChannelId, content, files) : Promise.resolve(false)
               }
               onDeleteMessage={id =>
                 currentChannelId && handleDeleteMessage(currentChannelId, id)

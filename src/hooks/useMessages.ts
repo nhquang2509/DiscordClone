@@ -136,21 +136,24 @@ export function useMessages(channelId: string | null) {
     authorColor: string,
     content: string,
     files: FileAttachment[],
-  ) => {
-    if (!channelId) return;
+  ): Promise<boolean> => {
+    if (!channelId) return false;
     const { data, error } = await supabase
       .from('messages')
       .insert({ channel_id: channelId, author_id: authorId, author_name: authorName, author_color: authorColor, content })
       .select()
       .single();
-    if (!error && data && files.length > 0) {
-      await supabase.from('file_attachments').insert(
+    if (error) return false;
+    if (data && files.length > 0) {
+      const { error: fileError } = await supabase.from('file_attachments').insert(
         files.map(f => ({ message_id: data.id, name: f.name, file_type: f.fileType, url: f.url })),
       );
+      if (fileError) return false;
       // Reload to get the message with its attachments properly
       fetchMessages();
     }
     // Text-only messages are handled by the realtime INSERT handler
+    return true;
   };
 
   const deleteMessage = async (messageId: string) => {

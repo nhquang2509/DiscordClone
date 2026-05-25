@@ -23,6 +23,7 @@ import {
   Phone,
   Video,
   User,
+  AlertCircle,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -44,7 +45,7 @@ interface ChatAreaProps {
   members: ServerMember[];
   myRole: MemberRole;
   onSetMemberRole: (userId: string, role: MemberRole) => void;
-  onSendMessage: (content: string, files: FileAttachment[]) => void;
+  onSendMessage: (content: string, files: FileAttachment[]) => Promise<boolean>;
   onDeleteMessage: (id: string) => void;
   onEditMessage: (id: string, content: string) => void;
   loadMore: () => void;
@@ -90,6 +91,7 @@ export function ChatArea({
   const [showJoinPanel, setShowJoinPanel] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [pendingScrollId, setPendingScrollId] = useState<string | null>(null);
+  const [failedMessages, setFailedMessages] = useState<{ id: string; content: string }[]>([]);
 
   // DM call signaling (only active for members channels)
   const { incomingCall, broadcastCallStarted, broadcastCallEnded, dismissIncomingCall } =
@@ -282,10 +284,14 @@ export function ChatArea({
 
   // ——— Text channel ———
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!messageInput.trim()) return;
-    onSendMessage(messageInput.trim(), []);
+    const content = messageInput.trim();
     setMessageInput('');
+    const success = await onSendMessage(content, []);
+    if (!success) {
+      setFailedMessages(prev => [...prev, { id: crypto.randomUUID(), content }]);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -295,8 +301,11 @@ export function ChatArea({
     }
   };
 
-  const handleSendFiles = (files: FileAttachment[]) => {
-    onSendMessage('', files);
+  const handleSendFiles = async (files: FileAttachment[]) => {
+    const success = await onSendMessage('', files);
+    if (!success) {
+      setFailedMessages(prev => [...prev, { id: crypto.randomUUID(), content: `[${files.length} file(s)]` }]);
+    }
   };
 
   const startEdit = (msg: Message) => {
@@ -746,6 +755,36 @@ export function ChatArea({
             );
           })}
         </div>
+
+        {/* Failed messages */}
+        {failedMessages.length > 0 && (
+          <div className="space-y-0.5 mt-0.5">
+            {failedMessages.map(fm => (
+              <div key={fm.id} className="px-4 pt-2 pb-1 -mx-4 flex gap-4 bg-[#ed4245]/10">
+                {/* Avatar placeholder — red ! */}
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#ed4245] flex-shrink-0 mt-0.5">
+                  <AlertCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`${isDark ? 'text-[#f8f9fa]' : 'text-[#2e3035]'} text-[15px] leading-[1.375rem] opacity-50`}>
+                    {fm.content}
+                  </p>
+                  <p className="text-[#ed4245] text-xs italic mt-0.5">
+                    Can&apos;t send message. Please try again later.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setFailedMessages(prev => prev.filter(m => m.id !== fm.id))}
+                  className="text-[#ed4245] hover:text-[#c03537] transition-colors flex-shrink-0 self-start mt-1"
+                  title="Dismiss"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
