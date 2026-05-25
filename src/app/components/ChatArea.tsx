@@ -34,6 +34,7 @@ import type { ServerMember, MemberRole } from '../../hooks/useServerMembers';
 import { useDmCallSignal } from '../../hooks/useDmCallSignal';
 import { usePinnedMessages } from '../../hooks/usePinnedMessages';
 import type { PinnedMessage } from '../../hooks/usePinnedMessages';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 interface ChatAreaProps {
   channel: Channel | null;
@@ -97,6 +98,9 @@ export function ChatArea({
     currentUserId,
     currentUsername,
   );
+
+  // Network status
+  const networkStatus = useNetworkStatus();
 
   // Auto-show notification popup when an incoming call arrives
   useEffect(() => {
@@ -291,10 +295,25 @@ export function ChatArea({
           )}
         </div>
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-[#248046] text-white text-xs font-medium rounded flex items-center gap-1">
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-            Live: Real-time updates
-          </div>
+          {/* Network status badge */}
+          {networkStatus === 'online' && (
+            <div className="px-3 py-1 bg-[#248046] text-white text-xs font-medium rounded flex items-center gap-1">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              Live: Real-time updates
+            </div>
+          )}
+          {networkStatus === 'slow' && (
+            <div className="px-3 py-1 bg-[#f0a032] text-white text-xs font-medium rounded flex items-center gap-1">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              Unstable connection
+            </div>
+          )}
+          {networkStatus === 'offline' && (
+            <div className="px-3 py-1 bg-[#ed4245] text-white text-xs font-medium rounded flex items-center gap-1">
+              <div className="w-2 h-2 bg-white rounded-full" />
+              No connection
+            </div>
+          )}
           {channel.type === 'members' ? (
             <>
               <Phone
