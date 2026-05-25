@@ -32,6 +32,8 @@ import { AttachmentModal } from './AttachmentModal';
 import type { Channel, Message, FileAttachment } from '@/types';
 import type { ServerMember, MemberRole } from '../../hooks/useServerMembers';
 import { useDmCallSignal } from '../../hooks/useDmCallSignal';
+import { usePinnedMessages } from '../../hooks/usePinnedMessages';
+import type { PinnedMessage } from '../../hooks/usePinnedMessages';
 
 interface ChatAreaProps {
   channel: Channel | null;
@@ -78,6 +80,8 @@ export function ChatArea({
   const [openRoleMenuId, setOpenRoleMenuId] = useState<string | null>(null);
   const [dmCallMode, setDmCallMode] = useState<'none' | 'audio' | 'video'>('none');
   const [showCallNotif, setShowCallNotif] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ msgId: string; x: number; y: number } | null>(null);
+  const [showPinPanel, setShowPinPanel] = useState(false);
 
   // DM call signaling (only active for members channels)
   const { incomingCall, broadcastCallStarted, broadcastCallEnded, dismissIncomingCall } =
@@ -86,6 +90,13 @@ export function ChatArea({
       currentUserId,
       currentUsername,
     );
+
+  // Pinned messages
+  const { pinnedMessages, pinMessage } = usePinnedMessages(
+    channel?.id ?? null,
+    currentUserId,
+    currentUsername,
+  );
 
   // Auto-show notification popup when an incoming call arrives
   useEffect(() => {
@@ -99,6 +110,20 @@ export function ChatArea({
       setShowCallNotif(false);
     }
   }, [dmCallMode, dismissIncomingCall]);
+
+  // Close context menu when clicking anywhere
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [contextMenu]);
+
+  const handlePinMessage = async (msgId: string) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+    await pinMessage(msgId, msg.content, msg.authorName);
+  };
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Saved scrollHeight before loadMore — used to restore scroll position after prepend
@@ -242,6 +267,7 @@ export function ChatArea({
   const cancelEdit = () => setEditingId(null);
 
   return (
+    <>
     <div className={`flex-1 ${bg} flex min-w-0`}>
       {/* Main chat column */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -332,12 +358,30 @@ export function ChatArea({
                   </div>
                 )}
               </div>
-              <Pin className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              {/* Pin icon (members) */}
+              <PinIconWithPanel
+                pinnedMessages={pinnedMessages}
+                showPinPanel={showPinPanel}
+                setShowPinPanel={setShowPinPanel}
+                textMuted={textMuted}
+                hoverIconMuted={hoverIconMuted}
+                isDark={isDark}
+                onSeePins={() => setShowPinPanel(true)}
+              />
             </>
           ) : (
             <>
               <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
-              <Pin className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              {/* Pin icon (text channel) */}
+              <PinIconWithPanel
+                pinnedMessages={pinnedMessages}
+                showPinPanel={showPinPanel}
+                setShowPinPanel={setShowPinPanel}
+                textMuted={textMuted}
+                hoverIconMuted={hoverIconMuted}
+                isDark={isDark}
+                onSeePins={() => setShowPinPanel(true)}
+              />
               <Users
                 onClick={() => setIsMembersOpen(o => !o)}
                 className={`w-5 h-5 cursor-pointer transition-colors ${
@@ -408,9 +452,31 @@ export function ChatArea({
         {/* Message list */}
         <div className="space-y-0.5">
           {messages.map((msg, index) => {
+            // System messages (pin notifications) rendered as centered dividers
+            if (msg.isSystem) {
+              return (
+                <div key={msg.id} className="flex items-center gap-3 px-4 py-1 my-1">
+                  <div className={`flex-1 h-px ${isDark ? 'bg-[#3f4147]' : 'bg-[#d5d7db]'}`} />
+                  <span className={`text-xs ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'} flex items-center gap-1.5 flex-shrink-0`}>
+                    <Pin className="w-3 h-3" />
+                    {msg.content}
+                    {' — '}
+                    <button
+                      onClick={() => setShowPinPanel(true)}
+                      className="text-[#5865f2] hover:underline"
+                    >
+                      See more
+                    </button>
+                  </span>
+                  <div className={`flex-1 h-px ${isDark ? 'bg-[#3f4147]' : 'bg-[#d5d7db]'}`} />
+                </div>
+              );
+            }
+
             const prev = messages[index - 1];
             const showAvatar =
               !prev ||
+              prev.isSystem ||
               prev.authorId !== msg.authorId ||
               prev.deleted;
             const isOwn = msg.authorId === currentUserId;
@@ -420,6 +486,14 @@ export function ChatArea({
               <div
                 key={msg.id}
                 className={`group ${hoverBg} px-4 ${showAvatar ? 'pt-2 pb-1' : 'py-0.5'} -mx-4 flex gap-4 relative`}
+                onContextMenu={(e) => {
+                  if (msg.deleted) return;
+                  e.preventDefault();
+                  // Adjust position so menu doesn't overflow the right/bottom edge
+                  const x = Math.min(e.clientX, window.innerWidth - 200);
+                  const y = Math.min(e.clientY, window.innerHeight - 60);
+                  setContextMenu({ msgId: msg.id, x, y });
+                }}
               >
                 {/* Avatar column */}
                 {showAvatar ? (
@@ -686,6 +760,129 @@ export function ChatArea({
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+
+    {/* Right-click context menu */}
+    {contextMenu && createPortal(
+      <div
+        className="fixed z-[300] rounded-md shadow-xl py-1 min-w-[180px]"
+        style={{
+          top: contextMenu.y,
+          left: contextMenu.x,
+          background: isDark ? '#111214' : '#fff',
+          border: `1px solid ${isDark ? '#2e3035' : '#e3e5e8'}`,
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={() => { handlePinMessage(contextMenu.msgId); setContextMenu(null); }}
+          className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-[#f0b132] hover:bg-[#f0b132] hover:text-white transition-colors rounded-sm mx-0.5"
+        >
+          <Pin className="w-4 h-4" />
+          Pin Message
+        </button>
+      </div>,
+      document.body,
+    )}
+    </>
+  );
+}
+
+// ─── Pin icon with panel ─────────────────────────────────────────────────────
+function PinIconWithPanel({
+  pinnedMessages,
+  showPinPanel,
+  setShowPinPanel,
+  textMuted,
+  hoverIconMuted,
+  isDark,
+}: {
+  pinnedMessages: PinnedMessage[];
+  showPinPanel: boolean;
+  setShowPinPanel: (v: boolean | ((p: boolean) => boolean)) => void;
+  textMuted: string;
+  hoverIconMuted: string;
+  isDark: boolean;
+  onSeePins: () => void;
+}) {
+  return (
+    <div className="relative">
+      <div
+        className="relative cursor-pointer"
+        onClick={() => setShowPinPanel(v => !v)}
+      >
+        <Pin className={`w-5 h-5 ${textMuted} ${hoverIconMuted} transition-colors`} />
+        {pinnedMessages.length > 0 && (
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#ed4245] rounded-full border-2 border-[#313338]" />
+        )}
+      </div>
+      {showPinPanel && (
+        <div
+          className="absolute right-0 top-full mt-2 w-96 rounded-lg shadow-xl z-[200]"
+          style={{
+            background: isDark ? '#2b2d31' : '#f2f3f5',
+            border: `1px solid ${isDark ? '#1e1f22' : '#e3e5e8'}`,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ borderBottom: `1px solid ${isDark ? '#1e1f22' : '#e3e5e8'}` }}
+          >
+            <div className="flex items-center gap-2">
+              <Pin className={`w-4 h-4 ${isDark ? 'text-[#b5bac1]' : 'text-[#4e5058]'}`} />
+              <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-[#2e3338]'}`}>
+                Pinned Messages
+              </span>
+            </div>
+            <button
+              onClick={() => setShowPinPanel(false)}
+              className={`${isDark ? 'text-[#b5bac1] hover:text-white' : 'text-[#4e5058] hover:text-[#2e3338]'} transition-colors`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* Body */}
+          {pinnedMessages.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <Pin className={`w-8 h-8 mx-auto mb-2 ${isDark ? 'text-[#4e5058]' : 'text-[#c1c4c9]'}`} />
+              <p className={`text-sm ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>
+                No pinned messages yet.
+              </p>
+              <p className={`text-xs mt-1 ${isDark ? 'text-[#6d6f78]' : 'text-[#87909b]'}`}>
+                Right-click a message to pin it.
+              </p>
+            </div>
+          ) : (
+            <div className="max-h-96 overflow-y-auto divide-y"
+              style={{ borderColor: isDark ? '#1e1f22' : '#e3e5e8' }}
+            >
+              {pinnedMessages.map(pin => (
+                <div key={pin.id} className={`px-4 py-3 ${isDark ? 'hover:bg-[#35373c]' : 'hover:bg-[#e6e8eb]'} transition-colors`}>
+                  <div className="flex items-start gap-2">
+                    <Pin className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-[#2e3338]'}`}>
+                          {pin.authorName}
+                        </span>
+                        <span className={`text-xs ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>{pin.createdAt}</span>
+                      </div>
+                      <p className={`text-sm leading-snug break-words ${isDark ? 'text-[#dbdee1]' : 'text-[#2e3338]'}`}>
+                        {pin.content}
+                      </p>
+                      <p className={`text-xs mt-1 ${isDark ? 'text-[#6d6f78]' : 'text-[#87909b]'}`}>
+                        Pinned by {pin.pinnedByName}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

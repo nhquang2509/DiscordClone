@@ -32,6 +32,7 @@ function mapRow(row: any): Message {
     content: row.content,
     deleted: row.deleted,
     edited: row.edited,
+    isSystem: row.is_system ?? false,
     files,
   };
 }

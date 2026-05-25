@@ -23,6 +23,7 @@ export interface Message {
   content: string;
   deleted: boolean;
   edited: boolean;
+  isSystem: boolean;
   files: FileAttachment[];
 }
 
