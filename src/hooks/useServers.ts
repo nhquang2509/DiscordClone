@@ -105,6 +105,25 @@ export function useServers(user: User | null) {
         username: displayName,
         role: 'guest',
       });
+
+      // Insert system message "X has joined the server" into all text channels
+      const { data: channelData } = await supabase
+        .from('channels')
+        .select('id')
+        .eq('server_id', server.id)
+        .eq('type', 'text');
+      if (channelData && channelData.length > 0) {
+        await supabase.from('messages').insert(
+          channelData.map(ch => ({
+            channel_id: ch.id,
+            author_id: user.id,
+            author_name: displayName,
+            author_color: '#5865f2',
+            content: `${displayName} has joined the server`,
+            is_system: true,
+          }))
+        );
+      }
     }
 
     setServers(prev =>

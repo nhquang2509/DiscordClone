@@ -1,8 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
 export type MemberRole = 'admin' | 'moderator' | 'guest';
+
+export interface JoinNotification {
+  id: string;
+  username: string;
+  joinedAt: string;
+}
 
 export interface ServerMember {
   userId: string;
@@ -19,13 +25,17 @@ const ROLE_LABEL: Record<MemberRole, string> = {
 export function useServerMembers(serverId: string | null, currentUserId: string | null) {
   const [members, setMembers] = useState<ServerMember[]>([]);
   const [myRole, setMyRole] = useState<MemberRole>('guest');
+  const [joinNotifications, setJoinNotifications] = useState<JoinNotification[]>([]);
   // Prevent double-notification if both realtime and polling fire
   const notifiedRef = useRef(false);
+
+  const clearJoinNotifications = useCallback(() => setJoinNotifications([]), []);
 
   useEffect(() => {
     if (!serverId || !currentUserId) {
       setMembers([]);
       setMyRole('guest');
+      setJoinNotifications([]);
       return;
     }
 
@@ -70,6 +80,34 @@ export function useServerMembers(serverId: string | null, currentUserId: string 
     // Realtime: fires instantly when Supabase Realtime is enabled on the table
     const rt = supabase
       .channel(`server_members_rt_${serverId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'server_members',
+          filter: `server_id=eq.${serverId}`,
+        },
+        (payload) => {
+          const added = payload.new as { user_id: string; role: string; username: string };
+          const newMember: ServerMember = {
+            userId: added.user_id,
+            username: added.username ?? 'Unknown',
+            role: added.role as MemberRole,
+          };
+          // Update member list for all existing members
+          setMembers(prev =>
+            prev.find(m => m.userId === added.user_id) ? prev : [...prev, newMember]
+          );
+          // Show join notification to everyone except the joining user
+          if (added.user_id !== currentUserId) {
+            setJoinNotifications(prev => [
+              { id: crypto.randomUUID(), username: added.username ?? 'Unknown', joinedAt: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) },
+              ...prev,
+            ]);
+          }
+        }
+      )
       .on(
         'postgres_changes',
         {
@@ -138,5 +176,5 @@ export function useServerMembers(serverId: string | null, currentUserId: string 
     setMembers(prev => prev.filter(m => m.userId !== userId));
   };
 
-  return { members, myRole, setMemberRole, kickMember };
+  return { members, myRole, setMemberRole, kickMember, joinNotifications, clearJoinNotifications };
 }

@@ -49,7 +49,7 @@ export default function HomePage() {
     hasMore,
     isLoadingMore,
   } = useMessages(currentChannelId);
-  const { members, myRole, setMemberRole, kickMember } = useServerMembers(
+  const { members, myRole, setMemberRole, kickMember, joinNotifications, clearJoinNotifications } = useServerMembers(
     selectedServerId,
     user?.id ?? null,
   );
@@ -272,6 +272,8 @@ export default function HomePage() {
               loadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
+              joinNotifications={joinNotifications}
+              clearJoinNotifications={clearJoinNotifications}
               partnerName={
                 currentChannel?.type === 'members' && currentChannelId
                   ? dmChannelMap[currentChannelId]?.partnerName

@@ -30,7 +30,7 @@ import { useTheme } from '@/lib/theme-context';
 import { VideoCallArea } from './VideoCallArea';
 import { AttachmentModal } from './AttachmentModal';
 import type { Channel, Message, FileAttachment } from '@/types';
-import type { ServerMember, MemberRole } from '../../hooks/useServerMembers';
+import type { ServerMember, MemberRole, JoinNotification } from '../../hooks/useServerMembers';
 import { useDmCallSignal } from '../../hooks/useDmCallSignal';
 import { usePinnedMessages } from '../../hooks/usePinnedMessages';
 import type { PinnedMessage } from '../../hooks/usePinnedMessages';
@@ -50,6 +50,8 @@ interface ChatAreaProps {
   loadMore: () => void;
   hasMore: boolean;
   isLoadingMore: boolean;
+  joinNotifications: JoinNotification[];
+  clearJoinNotifications: () => void;
   partnerName?: string;
 }
 
@@ -67,6 +69,8 @@ export function ChatArea({
   loadMore,
   hasMore,
   isLoadingMore,
+  joinNotifications,
+  clearJoinNotifications,
   partnerName,
 }: ChatAreaProps) {
   const { resolvedTheme } = useTheme();
@@ -83,6 +87,7 @@ export function ChatArea({
   const [showCallNotif, setShowCallNotif] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ msgId: string; x: number; y: number } | null>(null);
   const [showPinPanel, setShowPinPanel] = useState(false);
+  const [showJoinPanel, setShowJoinPanel] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [pendingScrollId, setPendingScrollId] = useState<string | null>(null);
 
@@ -117,13 +122,13 @@ export function ChatArea({
     }
   }, [dmCallMode, dismissIncomingCall]);
 
-  // Close context menu when clicking anywhere
+  // Close context menu / join panel when clicking anywhere
   useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
+    if (!contextMenu && !showJoinPanel) return;
+    const close = () => { setContextMenu(null); setShowJoinPanel(false); };
     window.addEventListener('click', close);
     return () => window.removeEventListener('click', close);
-  }, [contextMenu]);
+  }, [contextMenu, showJoinPanel]);
 
   const handlePinMessage = async (msgId: string) => {
     const msg = messages.find(m => m.id === msgId);
@@ -429,7 +434,72 @@ export function ChatArea({
             </>
           ) : (
             <>
-              <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              {/* Bell with join notifications (text channel) */}
+              <div className="relative">
+                <div
+                  className="relative cursor-pointer"
+                  onClick={() => { setShowJoinPanel(v => !v); if (!showJoinPanel) clearJoinNotifications(); }}
+                >
+                  <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} transition-colors`} />
+                  {joinNotifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#ed4245] rounded-full border-2 border-[#313338]" />
+                  )}
+                </div>
+                {showJoinPanel && (
+                  <div
+                    className="absolute right-0 top-full mt-2 w-80 rounded-lg shadow-xl z-[200]"
+                    style={{
+                      background: isDark ? '#2b2d31' : '#f2f3f5',
+                      border: `1px solid ${isDark ? '#1e1f22' : '#e3e5e8'}`,
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <div
+                      className="px-4 py-3 flex items-center justify-between"
+                      style={{ borderBottom: `1px solid ${isDark ? '#1e1f22' : '#e3e5e8'}` }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Bell className={`w-4 h-4 ${isDark ? 'text-[#b5bac1]' : 'text-[#4e5058]'}`} />
+                        <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-[#2e3338]'}`}>
+                          Server Notifications
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setShowJoinPanel(false)}
+                        className={`${isDark ? 'text-[#b5bac1] hover:text-white' : 'text-[#4e5058] hover:text-[#2e3338]'} transition-colors`}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {joinNotifications.length === 0 ? (
+                      <div className="px-4 py-6 text-center">
+                        <Bell className={`w-8 h-8 mx-auto mb-2 ${isDark ? 'text-[#4e5058]' : 'text-[#c1c4c9]'}`} />
+                        <p className={`text-sm ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>No new notifications</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-72 overflow-y-auto divide-y"
+                        style={{ borderColor: isDark ? '#1e1f22' : '#e3e5e8' }}
+                      >
+                        {joinNotifications.map(n => (
+                          <div key={n.id} className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'hover:bg-[#35373c]' : 'hover:bg-[#e6e8eb]'} transition-colors`}>
+                            <div className="w-8 h-8 rounded-full bg-[#248046] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              {n.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-[#2e3338]'}`}>
+                                {n.username}
+                              </p>
+                              <p className={`text-xs ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>
+                                has joined the server · {n.joinedAt}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               {/* Pin icon (text channel) */}
               <PinIconWithPanel
                 pinnedMessages={pinnedMessages}
