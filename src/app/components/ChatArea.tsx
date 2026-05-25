@@ -30,7 +30,7 @@ import { useTheme } from '@/lib/theme-context';
 import { VideoCallArea } from './VideoCallArea';
 import { AttachmentModal } from './AttachmentModal';
 import type { Channel, Message, FileAttachment } from '@/types';
-import type { ServerMember, MemberRole, JoinNotification } from '../../hooks/useServerMembers';
+import type { ServerMember, MemberRole, ServerNotification } from '../../hooks/useServerMembers';
 import { useDmCallSignal } from '../../hooks/useDmCallSignal';
 import { usePinnedMessages } from '../../hooks/usePinnedMessages';
 import type { PinnedMessage } from '../../hooks/usePinnedMessages';
@@ -50,7 +50,7 @@ interface ChatAreaProps {
   loadMore: () => void;
   hasMore: boolean;
   isLoadingMore: boolean;
-  joinNotifications: JoinNotification[];
+  joinNotifications: ServerNotification[];
   clearJoinNotifications: () => void;
   partnerName?: string;
 }
@@ -441,9 +441,6 @@ export function ChatArea({
                   onClick={() => { setShowJoinPanel(v => !v); if (!showJoinPanel) clearJoinNotifications(); }}
                 >
                   <Bell className={`w-5 h-5 ${textMuted} ${hoverIconMuted} transition-colors`} />
-                  {joinNotifications.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#ed4245] rounded-full border-2 border-[#313338]" />
-                  )}
                 </div>
                 {showJoinPanel && (
                   <div
@@ -482,7 +479,9 @@ export function ChatArea({
                       >
                         {joinNotifications.map(n => (
                           <div key={n.id} className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'hover:bg-[#35373c]' : 'hover:bg-[#e6e8eb]'} transition-colors`}>
-                            <div className="w-8 h-8 rounded-full bg-[#248046] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+                              n.type === 'join' ? 'bg-[#248046]' : 'bg-[#ed4245]'
+                            }`}>
                               {n.username.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
@@ -490,7 +489,7 @@ export function ChatArea({
                                 {n.username}
                               </p>
                               <p className={`text-xs ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'}`}>
-                                has joined the server · {n.joinedAt}
+                                {n.type === 'join' ? 'has joined the server' : 'has left the server'} · {n.time}
                               </p>
                             </div>
                           </div>
@@ -581,21 +580,28 @@ export function ChatArea({
         {/* Message list */}
         <div className="space-y-0.5">
           {messages.map((msg, index) => {
-            // System messages (pin notifications) rendered as centered dividers
+            // System messages rendered as centered dividers
             if (msg.isSystem) {
+              const isServerEvent =
+                msg.content.includes('has joined the server') ||
+                msg.content.includes('has left the server');
               return (
                 <div key={msg.id} className="flex items-center gap-3 px-4 py-1 my-1">
                   <div className={`flex-1 h-px ${isDark ? 'bg-[#3f4147]' : 'bg-[#d5d7db]'}`} />
                   <span className={`text-xs ${isDark ? 'text-[#949ba4]' : 'text-[#5c5f66]'} flex items-center gap-1.5 flex-shrink-0`}>
-                    <Pin className="w-3 h-3" />
+                    {!isServerEvent && <Pin className="w-3 h-3" />}
                     {msg.content}
-                    {' — '}
-                    <button
-                      onClick={() => setShowPinPanel(true)}
-                      className="text-[#5865f2] hover:underline"
-                    >
-                      See more
-                    </button>
+                    {!isServerEvent && (
+                      <>
+                        {' — '}
+                        <button
+                          onClick={() => setShowPinPanel(true)}
+                          className="text-[#5865f2] hover:underline"
+                        >
+                          See more
+                        </button>
+                      </>
+                    )}
                   </span>
                   <div className={`flex-1 h-px ${isDark ? 'bg-[#3f4147]' : 'bg-[#d5d7db]'}`} />
                 </div>

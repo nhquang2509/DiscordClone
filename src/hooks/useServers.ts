@@ -133,6 +133,26 @@ export function useServers(user: User | null) {
   };
 
   const quitServer = async (serverId: string, userId: string) => {
+    // Insert system message to all text channels before deleting membership
+    const displayName =
+      user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'User';
+    const { data: channelData } = await supabase
+      .from('channels')
+      .select('id')
+      .eq('server_id', serverId)
+      .eq('type', 'text');
+    if (channelData && channelData.length > 0) {
+      await supabase.from('messages').insert(
+        channelData.map(ch => ({
+          channel_id: ch.id,
+          author_id: userId,
+          author_name: displayName,
+          author_color: '#ed4245',
+          content: `${displayName} has left the server`,
+          is_system: true,
+        }))
+      );
+    }
     await supabase
       .from('server_members')
       .delete()

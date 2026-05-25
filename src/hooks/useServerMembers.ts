@@ -4,10 +4,11 @@ import { toast } from 'sonner';
 
 export type MemberRole = 'admin' | 'moderator' | 'guest';
 
-export interface JoinNotification {
+export interface ServerNotification {
   id: string;
   username: string;
-  joinedAt: string;
+  type: 'join' | 'leave';
+  time: string;
 }
 
 export interface ServerMember {
@@ -25,17 +26,17 @@ const ROLE_LABEL: Record<MemberRole, string> = {
 export function useServerMembers(serverId: string | null, currentUserId: string | null) {
   const [members, setMembers] = useState<ServerMember[]>([]);
   const [myRole, setMyRole] = useState<MemberRole>('guest');
-  const [joinNotifications, setJoinNotifications] = useState<JoinNotification[]>([]);
+  const [serverNotifications, setServerNotifications] = useState<ServerNotification[]>([]);
   // Prevent double-notification if both realtime and polling fire
   const notifiedRef = useRef(false);
 
-  const clearJoinNotifications = useCallback(() => setJoinNotifications([]), []);
+  const clearServerNotifications = useCallback(() => setServerNotifications([]), []);
 
   useEffect(() => {
     if (!serverId || !currentUserId) {
       setMembers([]);
       setMyRole('guest');
-      setJoinNotifications([]);
+      setServerNotifications([]);
       return;
     }
 
@@ -101,8 +102,29 @@ export function useServerMembers(serverId: string | null, currentUserId: string 
           );
           // Show join notification to everyone except the joining user
           if (added.user_id !== currentUserId) {
-            setJoinNotifications(prev => [
-              { id: crypto.randomUUID(), username: added.username ?? 'Unknown', joinedAt: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) },
+            setServerNotifications(prev => [
+              { id: crypto.randomUUID(), username: added.username ?? 'Unknown', type: 'join', time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) },
+              ...prev,
+            ]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'server_members',
+          filter: `server_id=eq.${serverId}`,
+        },
+        (payload) => {
+          const removed = payload.old as { user_id: string; username?: string };
+          // Remove from member list
+          setMembers(prev => prev.filter(m => m.userId !== removed.user_id));
+          // Show leave notification to remaining members
+          if (removed.user_id !== currentUserId) {
+            setServerNotifications(prev => [
+              { id: crypto.randomUUID(), username: removed.username ?? 'Unknown', type: 'leave', time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) },
               ...prev,
             ]);
           }
@@ -168,6 +190,26 @@ export function useServerMembers(serverId: string | null, currentUserId: string 
 
   const kickMember = async (userId: string) => {
     if (!serverId) return;
+    const kicked = members.find(m => m.userId === userId);
+    const kickedName = kicked?.username ?? 'Unknown';
+    // Insert system message to all text channels
+    const { data: channelData } = await supabase
+      .from('channels')
+      .select('id')
+      .eq('server_id', serverId)
+      .eq('type', 'text');
+    if (channelData && channelData.length > 0) {
+      await supabase.from('messages').insert(
+        channelData.map(ch => ({
+          channel_id: ch.id,
+          author_id: userId,
+          author_name: kickedName,
+          author_color: '#ed4245',
+          content: `${kickedName} has left the server`,
+          is_system: true,
+        }))
+      );
+    }
     await supabase
       .from('server_members')
       .delete()
@@ -176,5 +218,5 @@ export function useServerMembers(serverId: string | null, currentUserId: string 
     setMembers(prev => prev.filter(m => m.userId !== userId));
   };
 
-  return { members, myRole, setMemberRole, kickMember, joinNotifications, clearJoinNotifications };
+  return { members, myRole, setMemberRole, kickMember, serverNotifications, clearServerNotifications };
 }

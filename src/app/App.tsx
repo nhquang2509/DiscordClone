@@ -94,7 +94,7 @@ export default function App() {
   } = useServers(user);
   const currentChannelId = selectedServerId ? (selectedChannelIds[selectedServerId] ?? null) : null;
   const { channels, createChannel, deleteChannel, renameChannel } = useChannels(selectedServerId);
-  const { messages, sendMessage, deleteMessage: deleteMsg, editMessage, loadMore, hasMore, isLoadingMore } = useMessages(currentChannelId);  const { members, myRole, setMemberRole, kickMember, joinNotifications, clearJoinNotifications } = useServerMembers(selectedServerId, user?.id ?? null);
+  const { messages, sendMessage, deleteMessage: deleteMsg, editMessage, loadMore, hasMore, isLoadingMore } = useMessages(currentChannelId);  const { members, myRole, setMemberRole, kickMember, serverNotifications, clearServerNotifications } = useServerMembers(selectedServerId, user?.id ?? null);
   const { dmChannelMap, pendingInvitations, createDmChannel, acceptInvitation } =
     useDmInvitations(selectedServerId, user?.id ?? null);
   const resolvedTheme: 'dark' | 'light' =
@@ -302,8 +302,8 @@ export default function App() {
               loadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
-              joinNotifications={joinNotifications}
-              clearJoinNotifications={clearJoinNotifications}
+              joinNotifications={serverNotifications}
+              clearJoinNotifications={clearServerNotifications}
               onSendMessage={(content, files) =>
                 currentChannelId && handleSendMessage(currentChannelId, content, files)
               }
