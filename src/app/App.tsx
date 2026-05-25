@@ -3,6 +3,7 @@ import { ChannelSidebar } from './components/ChannelSidebar';
 import { ChatArea } from './components/ChatArea';
 import { AuthPage } from './components/AuthPage';
 import { ManageMembersModal } from './components/ManageMembersModal';
+import { ServerSettingsModal } from './components/ServerSettingsModal';
 import { useState, createContext, useContext, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
@@ -77,6 +78,7 @@ export default function App() {
   const [selectedChannelIds, setSelectedChannelIds] = useState<Record<string, string | null>>({});
   const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
   const [manageMembersReadOnly, setManageMembersReadOnly] = useState(false);
+  const [isServerSettingsOpen, setIsServerSettingsOpen] = useState(false);
 
   // Derived user info
   const displayName = user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'User';
@@ -91,6 +93,7 @@ export default function App() {
     generateInviteCode,
     joinServerByInvite,
     quitServer,
+    updateServer,
   } = useServers(user);
   const currentChannelId = selectedServerId ? (selectedChannelIds[selectedServerId] ?? null) : null;
   const { channels, createChannel, deleteChannel, renameChannel } = useChannels(selectedServerId);
@@ -270,6 +273,7 @@ export default function App() {
               onDeleteServer={() => handleDeleteServer(currentServer.id)}
               myRole={myRole}
               onQuitServer={() => handleQuitServer(currentServer.id)}
+              onServerSettings={() => setIsServerSettingsOpen(true)}
               inviteCode={currentServer.invite_code}
               onGenerateInviteCode={() => generateInviteCode(currentServer.id)}
               onManageMembers={() => { setIsManageMembersOpen(true); setManageMembersReadOnly(false); }}
@@ -290,6 +294,14 @@ export default function App() {
               onSetRole={setMemberRole}
               onKick={kickMember}
               readOnly={manageMembersReadOnly}
+            />
+            <ServerSettingsModal
+              isOpen={isServerSettingsOpen}
+              onClose={() => setIsServerSettingsOpen(false)}
+              serverName={currentServer.name}
+              serverImage={currentServer.image}
+              members={members}
+              onUpdateServer={(name, image) => updateServer(currentServer.id, name, image)}
             />
             <ChatArea
               channel={currentChannel}

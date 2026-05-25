@@ -15,6 +15,7 @@ import { ChannelSidebar } from '@/app/components/ChannelSidebar';
 import { ChatArea } from '@/app/components/ChatArea';
 import { AuthPage } from '@/app/components/AuthPage';
 import { ManageMembersModal } from '@/app/components/ManageMembersModal';
+import { ServerSettingsModal } from '@/app/components/ServerSettingsModal';
 import type { Theme, FileAttachment } from '@/types';
 
 export default function HomePage() {
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [selectedChannelIds, setSelectedChannelIds] = useState<Record<string, string | null>>({});
   const [isManageMembersOpen, setIsManageMembersOpen] = useState(false);
   const [manageMembersReadOnly, setManageMembersReadOnly] = useState(false);
+  const [isServerSettingsOpen, setIsServerSettingsOpen] = useState(false);
 
   const displayName = user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'User';
   const authorColor = '#5865f2';
@@ -36,6 +38,7 @@ export default function HomePage() {
     generateInviteCode,
     joinServerByInvite,
     quitServer,
+    updateServer,
   } = useServers(user);
 
   const currentChannelId = selectedServerId ? (selectedChannelIds[selectedServerId] ?? null) : null;
@@ -234,6 +237,7 @@ export default function HomePage() {
               onDeleteServer={() => handleDeleteServer(currentServer.id)}
               myRole={myRole}
               onQuitServer={() => handleQuitServer(currentServer.id)}
+              onServerSettings={() => setIsServerSettingsOpen(true)}
               inviteCode={currentServer.invite_code}
               onGenerateInviteCode={() => generateInviteCode(currentServer.id)}
               onManageMembers={() => {
@@ -260,6 +264,14 @@ export default function HomePage() {
               onSetRole={setMemberRole}
               onKick={kickMember}
               readOnly={manageMembersReadOnly}
+            />
+            <ServerSettingsModal
+              isOpen={isServerSettingsOpen}
+              onClose={() => setIsServerSettingsOpen(false)}
+              serverName={currentServer.name}
+              serverImage={currentServer.image}
+              members={members}
+              onUpdateServer={(name, image) => updateServer(currentServer.id, name, image)}
             />
             <ChatArea
               channel={currentChannel}

@@ -42,6 +42,7 @@ interface ChannelSidebarProps {
   onDeleteServer: () => void;
   myRole: MemberRole;
   onQuitServer: () => void;
+  onServerSettings: () => void;
   inviteCode: string | null;
   onGenerateInviteCode: () => Promise<string | null>;
   onManageMembers: () => void;
@@ -66,6 +67,7 @@ export function ChannelSidebar({
   onDeleteServer,
   myRole,
   onQuitServer,
+  onServerSettings,
   inviteCode,
   onGenerateInviteCode,
   onManageMembers,
@@ -308,7 +310,9 @@ export function ChannelSidebar({
             />
             {myRole !== 'guest' && (
               <>
-                <DropdownItem icon={Settings} label="Server Settings" onClick={() => setIsDropdownOpen(false)} />
+                {myRole === 'admin' && (
+                  <DropdownItem icon={Settings} label="Server Settings" onClick={() => { onServerSettings(); setIsDropdownOpen(false); }} />
+                )}
                 <DropdownItem icon={Users} label="Manage Members" onClick={() => { onManageMembers(); setIsDropdownOpen(false); }} />
                 <DropdownItem icon={Plus} label="Create Channel" onClick={() => openCreate('text')} />
               </>

@@ -133,7 +133,6 @@ export function useServers(user: User | null) {
   };
 
   const quitServer = async (serverId: string, userId: string) => {
-    // Insert system message to all text channels before deleting membership
     const displayName =
       user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'User';
     const { data: channelData } = await supabase
@@ -161,6 +160,22 @@ export function useServers(user: User | null) {
     setServers(prev => prev.filter(s => s.id !== serverId));
   };
 
+  const updateServer = async (
+    serverId: string,
+    name: string,
+    image: string | null,
+  ): Promise<boolean> => {
+    const { error } = await supabase
+      .from('servers')
+      .update({ name, image })
+      .eq('id', serverId);
+    if (error) return false;
+    setServers(prev =>
+      prev.map(s => s.id === serverId ? { ...s, name, image } : s)
+    );
+    return true;
+  };
+
   return {
     servers,
     loading,
@@ -169,5 +184,6 @@ export function useServers(user: User | null) {
     generateInviteCode,
     joinServerByInvite,
     quitServer,
+    updateServer,
   };
 }
