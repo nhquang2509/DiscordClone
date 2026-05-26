@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
 import { useTheme } from '@/lib/theme-context';
 import { supabase } from '@/lib/supabase/client';
 import { VideoCallArea } from './VideoCallArea';
@@ -181,6 +183,28 @@ export function ChatArea({
   const prevScrollHeightRef = useRef<number | null>(null);
   // Whether user is near the bottom (to decide if we auto-scroll on new messages)
   const isAtBottomRef = useRef(true);
+
+  // Emoji picker
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!isEmojiOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(e.target as Node) &&
+        emojiButtonRef.current &&
+        !emojiButtonRef.current.contains(e.target as Node)
+      ) {
+        setIsEmojiOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isEmojiOpen]);
 
   // Scroll to bottom instantly whenever the channel changes
   useEffect(() => {
@@ -891,7 +915,34 @@ export function ChatArea({
             <div className="flex items-center gap-2">
               <Gift className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
               <Sticker className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
-              <SmilePlus className={`w-5 h-5 ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`} />
+              <div className="relative">
+                <button
+                  ref={emojiButtonRef}
+                  onClick={() => setIsEmojiOpen(o => !o)}
+                  className={`flex items-center justify-center ${textMuted} ${hoverIconMuted} cursor-pointer transition-colors`}
+                  title="Emoji"
+                  type="button"
+                >
+                  <SmilePlus className="w-5 h-5" />
+                </button>
+                {isEmojiOpen && (
+                  <div
+                    ref={emojiPickerRef}
+                    className="absolute bottom-8 right-0 z-50"
+                  >
+                    <Picker
+                      data={data}
+                      theme={isDark ? 'dark' : 'light'}
+                      onEmojiSelect={(emoji: { native: string }) => {
+                        setMessageInput(prev => prev + emoji.native);
+                        setIsEmojiOpen(false);
+                      }}
+                      locale="en"
+                      previewPosition="none"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
