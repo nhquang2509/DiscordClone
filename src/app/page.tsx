@@ -8,6 +8,7 @@ import { useChannels } from '@/hooks/useChannels';
 import { useMessages } from '@/hooks/useMessages';
 import { useServerMembers } from '@/hooks/useServerMembers';
 import { useDmInvitations } from '@/hooks/useDmInvitations';
+import { useUnreadChannels } from '@/hooks/useUnreadChannels';
 import { supabase } from '@/lib/supabase/client';
 import { ThemeContext } from '@/lib/theme-context';
 import { ServerSidebar } from '@/app/components/ServerSidebar';
@@ -58,6 +59,12 @@ export default function HomePage() {
   );
   const { dmChannelMap, pendingInvitations, createDmChannel, acceptInvitation } =
     useDmInvitations(selectedServerId, user?.id ?? null);
+
+  const { unreadChannelIds } = useUnreadChannels(
+    channels,
+    currentChannelId,
+    user?.id ?? null,
+  );
 
   const resolvedTheme: 'dark' | 'light' =
     theme === 'system'
@@ -254,6 +261,7 @@ export default function HomePage() {
               pendingInvitations={pendingInvitations}
               onCreateDm={handleCreateDm}
               onAcceptInvitation={handleAcceptInvitation}
+              unreadChannelIds={unreadChannelIds}
             />
             <ManageMembersModal
               isOpen={isManageMembersOpen}

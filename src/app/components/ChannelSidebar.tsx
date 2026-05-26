@@ -53,6 +53,7 @@ interface ChannelSidebarProps {
   pendingInvitations: DmInvitation[];
   onCreateDm: (member: ServerMember) => void;
   onAcceptInvitation: (invitationId: string) => void;
+  unreadChannelIds: Set<string>;
 }
 
 export function ChannelSidebar({
@@ -77,6 +78,7 @@ export function ChannelSidebar({
   pendingInvitations,
   onCreateDm,
   onAcceptInvitation,
+  unreadChannelIds,
 }: ChannelSidebarProps) {
   // Local store: immediate data for the current user's own active call.
   const localVoiceMap = useVoiceChannelStore();
@@ -176,6 +178,7 @@ export function ChannelSidebar({
         const isGeneral = channel.name === 'general' && channel.type === 'text';
         const isEditing = editingChannelId === channel.id;
         const channelUsers = mergedVoicePresence[channel.id] ?? [];
+        const isUnread = !isActive && unreadChannelIds.has(channel.id);
 
         return (
           <div key={channel.id}>
@@ -219,8 +222,11 @@ export function ChannelSidebar({
               </div>
             ) : (
               <>
-                <span className="text-[15px] font-medium flex-1 truncate">{channel.name}</span>
+                <span className={`text-[15px] flex-1 truncate ${isUnread ? `font-bold ${isDark ? 'text-white' : 'text-[#2e3338]'}` : 'font-medium'}`}>{channel.name}</span>
                 <div className="flex items-center gap-1">
+                  {isUnread && (
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isDark ? 'bg-white' : 'bg-[#2e3338]'}`} />
+                  )}
                   {isGeneral ? (
                     <Lock className={`w-3.5 h-3.5 ${textMuted} flex-shrink-0`} />
                   ) : myRole !== 'guest' ? (
@@ -428,6 +434,7 @@ export function ChannelSidebar({
               const info = dmChannelMap[channel.id];
               const isActive = channel.id === selectedChannelId;
               const displayName = info?.partnerName ?? channel.name;
+              const isUnread = !isActive && unreadChannelIds.has(channel.id);
               return (
                 <div key={channel.id}>
                   <div
@@ -441,7 +448,10 @@ export function ChannelSidebar({
                     <div className="w-5 h-5 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
                       {displayName.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-[15px] font-medium flex-1 truncate">{displayName}</span>
+                    <span className={`text-[15px] flex-1 truncate ${isUnread ? `font-bold ${isDark ? 'text-white' : 'text-[#2e3338]'}` : 'font-medium'}`}>{displayName}</span>
+                    {isUnread && (
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isDark ? 'bg-white' : 'bg-[#2e3338]'}`} />
+                    )}
                     <MessageSquare className={`w-3.5 h-3.5 ${textMuted} flex-shrink-0 opacity-0 group-hover/ch:opacity-100 transition-opacity`} />
                   </div>
                 </div>
