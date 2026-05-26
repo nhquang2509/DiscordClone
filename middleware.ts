@@ -32,17 +32,17 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Redirect unauthenticated users away from protected routes
+  // Redirect unauthenticated users to /auth (protect all routes except /auth itself)
   if (!user && pathname !== '/auth') {
     const url = request.nextUrl.clone();
     url.pathname = '/auth';
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth page
+  // Redirect authenticated users away from auth page → main app
   if (user && pathname === '/auth') {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/channels';
     return NextResponse.redirect(url);
   }
 

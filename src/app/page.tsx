@@ -1,5 +1,11 @@
-'use client';
+import { redirect } from 'next/navigation';
 
+export default function HomePage() {
+  redirect('/channels');
+}
+
+// ---- ARCHIVE: original monolithic page below (kept for reference) ----
+/*
 import { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -326,3 +332,4 @@ export default function HomePage() {
     </ThemeContext.Provider>
   );
 }
+*/

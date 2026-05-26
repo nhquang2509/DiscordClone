@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -15,6 +16,7 @@ interface AuthFormData {
 }
 
 export function AuthPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<"login" | "register">("login");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,6 +45,7 @@ export function AuthPage() {
         toast.error(error.message);
       } else {
         toast.success("Logged in successfully!");
+        router.push('/channels');
       }
     } else {
       const { error } = await supabase.auth.signUp({
@@ -58,7 +61,8 @@ export function AuthPage() {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Registered successfully! Check your email to confirm.");
+        toast.success("Registered successfully! Please log in.");
+        switchTab("login");
       }
     }
 
