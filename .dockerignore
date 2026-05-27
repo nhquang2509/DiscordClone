@@ -1,0 +1,23 @@
+.git
+.gitignore
+.next
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files (supply as build args or runtime env vars instead)
+.env
+.env.*
+!.env.example
+
+# Dev/IDE files
+.vscode
+.idea
+*.md
+!README.md
+
+# OS files
+.DS_Store
+Thumbs.db
