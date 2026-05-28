@@ -7,9 +7,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment files (supply as build args or runtime env vars instead)
+# Environment files
 .env
-.env.*
+.env.local
+.env.development
+!.env.production
 !.env.example
 
 # Dev/IDE files

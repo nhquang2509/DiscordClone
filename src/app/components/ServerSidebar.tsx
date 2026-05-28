@@ -1,7 +1,8 @@
 'use client';
 
-import { Building2, Plus, Moon, Sun, LogOut, Check } from 'lucide-react';
+import { Building2, Plus, Moon, Sun, LogOut, Check, User as UserIcon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { CreateServerModal } from './CreateServerModal';
 import { useTheme } from '@/lib/theme-context';
 import type { Server, Theme } from '@/types';
@@ -26,6 +27,7 @@ export function ServerSidebar({
 }: ServerSidebarProps) {
   const { resolvedTheme, theme, setTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
@@ -102,8 +104,9 @@ export function ServerSidebar({
         <div className={`w-8 h-[2px] ${divider} rounded-full`} />
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => user ? setIsModalOpen(true) : router.push('/auth')}
           className={`w-12 h-12 rounded-[24px] ${btnInactive} flex items-center justify-center hover:rounded-[16px] transition-all duration-200 group`}
+          title={user ? 'Create a server' : 'Login to create a server'}
         >
           <Plus className="w-6 h-6 text-[#23a559] group-hover:text-white transition-colors duration-200" />
         </button>
@@ -145,38 +148,48 @@ export function ServerSidebar({
           )}
         </div>
 
-        {/* User avatar */}
-        <div ref={userMenuRef} className="relative">
-          <button
-            onClick={() => setIsUserMenuOpen(o => !o)}
-            className="w-12 h-12 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-semibold text-base hover:rounded-[16px] transition-all duration-200"
-            title={displayName}
-          >
-            {avatarInitial}
-          </button>
-
-          {isUserMenuOpen && (
-            <div
-              className={`absolute bottom-0 left-full ml-3 ${dropdownBg} ${dropdownBorder} rounded-md shadow-lg py-1 z-50 min-w-[200px]`}
+        {/* User avatar / Login button */}
+        {user ? (
+          <div ref={userMenuRef} className="relative">
+            <button
+              onClick={() => setIsUserMenuOpen(o => !o)}
+              className="w-12 h-12 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-semibold text-base hover:rounded-[16px] transition-all duration-200"
+              title={displayName}
             >
-              <div className={`px-3 py-2 border-b ${isDark ? 'border-[#3f4147]' : 'border-[#e3e5e8]'}`}>
-                <p className={`text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Logged in as</p>
-                <p className={`text-sm font-semibold ${textPrimary} truncate mt-0.5`}>{displayName}</p>
-                <p className={`text-xs ${textMuted} truncate`}>{user?.email}</p>
-              </div>
-              <button
-                onClick={() => {
-                  setIsUserMenuOpen(false);
-                  onSignOut();
-                }}
-                className="w-full px-3 py-2 text-left text-[#f23f42] hover:bg-[#f23f42] hover:text-white flex items-center justify-between transition-colors"
+              {avatarInitial}
+            </button>
+
+            {isUserMenuOpen && (
+              <div
+                className={`absolute bottom-0 left-full ml-3 ${dropdownBg} ${dropdownBorder} rounded-md shadow-lg py-1 z-50 min-w-[200px]`}
               >
-                <span className="text-sm">Sign out</span>
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
+                <div className={`px-3 py-2 border-b ${isDark ? 'border-[#3f4147]' : 'border-[#e3e5e8]'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Logged in as</p>
+                  <p className={`text-sm font-semibold ${textPrimary} truncate mt-0.5`}>{displayName}</p>
+                  <p className={`text-xs ${textMuted} truncate`}>{user?.email}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onSignOut();
+                  }}
+                  className="w-full px-3 py-2 text-left text-[#f23f42] hover:bg-[#f23f42] hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <span className="text-sm">Sign out</span>
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={() => router.push('/auth')}
+            className={`w-12 h-12 rounded-[24px] ${btnInactive} flex items-center justify-center hover:rounded-[16px] transition-all duration-200 group`}
+            title="Login"
+          >
+            <UserIcon className="w-5 h-5 text-[#23a559] group-hover:text-white transition-colors duration-200" />
+          </button>
+        )}
       </div>
 
       <CreateServerModal

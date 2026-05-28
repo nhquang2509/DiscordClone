@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,15 @@ export function AuthPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"login" | "register">("login");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect to /channels if already logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        router.replace('/channels');
+      }
+    });
+  }, [router]);
 
   const {
     register,
